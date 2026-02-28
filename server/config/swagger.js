@@ -4,15 +4,24 @@ const options = {
     definition: {
         openapi: "3.0.0",
         info: {
-        title: "Yanashpa Courier API",
-        version: "1.0.0",
-        description: "Documentación del backend MERN"
+            title: "Yanashpa Courier API",
+            version: "1.0.0",
+            description: "Documentación del backend MERN"
         },
         servers: [
-        {
-            url: "http://localhost:3000"
+            {
+                url: "http://localhost:3000"
+            }
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT"
+                }
+            }
         }
-        ]
     },
     apis: ["./server/routes/*.js"]
 };

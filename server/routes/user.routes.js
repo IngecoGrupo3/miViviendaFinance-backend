@@ -1,53 +1,10 @@
 import { Router } from "express";
 import userController from "../controllers/UserController.js";
 import { validate } from "../middleware/validate.js";
-import { createUserSchema, listUsersQuerySchema } from "../schemas/user.schemas.js";
+import { listUsersQuerySchema } from "../schemas/user.schemas.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
-
-/**
- * @openapi
- * /api/users:
- *   post:
- *     summary: Crear usuario
- *     tags:
- *       - Users
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - username
- *               - email
- *             properties:
- *               name:
- *                 type: string
- *                 minLength: 2
- *                 example: Juan Perez
- *               username:
- *                 type: string
- *                 minLength: 3
- *                 example: juanp
- *               email:
- *                 type: string
- *                 format: email
- *                 example: juanp@gmail.com
- *           example:
- *             name: Juan Perez
- *             username: juanp
- *             email: juanp@gmail.com
- *     responses:
- *       201:
- *         description: Usuario creado
- *       400:
- *         description: Error de validación
- */
-router.post("/", validate({ body: createUserSchema }), (req, res, next) =>
-    userController.create(req, res, next)
-);
 
 /**
  * @openapi
@@ -56,6 +13,8 @@ router.post("/", validate({ body: createUserSchema }), (req, res, next) =>
  *     summary: Listar usuarios
  *     tags:
  *       - Users
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: limit
@@ -92,7 +51,7 @@ router.post("/", validate({ body: createUserSchema }), (req, res, next) =>
  *       400:
  *         description: Error de validación
  */
-router.get("/", validate({ query: listUsersQuerySchema }), (req, res, next) =>
+router.get("/", requireAuth, validate({ query: listUsersQuerySchema }), (req, res, next) =>
     userController.list(req, res, next)
 );
 

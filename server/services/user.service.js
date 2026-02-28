@@ -1,19 +1,15 @@
 import User from "../models/User.js";
 
-export async function createUser(data) {
-    const created = await User.create(data);
+export async function listUsers(params = {}) {
+    const { limit: rawLimit, offset: rawOffset, page } = params;
 
-    return {
-        id: created._id.toString(),
-        name: created.name,
-        username: created.username,
-        email: created.email,
-        createdAt: created.createdAt,
-        updatedAt: created.updatedAt
-    };
-}
+    const limit = rawLimit ?? 30;
+    let offset = rawOffset ?? 0;
 
-export async function listUsers({ limit = 30, offset = 0 } = {}) {
+    if (page != null && rawOffset == null) {
+        offset = (page - 1) * limit;
+    }
+
     const users = await User.find()
         .sort({ createdAt: -1 })
         .skip(offset)
