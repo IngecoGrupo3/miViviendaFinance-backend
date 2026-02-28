@@ -18,10 +18,11 @@ export async function listUsers(params = {}) {
 
     return users.map((u) => ({
         id: u._id.toString(),
-        name: u.name,
-        username: u.username,
+        full_name: u.fullName,
+        identity_document: u.identityDocument,
         email: u.email,
-        createdAt: u.createdAt,
-        updatedAt: u.updatedAt
+        phone: u.phone,
+        created_at: u.createdAt,
+        updated_at: u.updatedAt
     }));
 }

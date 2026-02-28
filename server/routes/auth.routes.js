@@ -19,21 +19,24 @@ const router = Router();
  *           schema:
  *             type: object
  *             required:
- *               - name
- *               - username
+ *               - full_name
+ *               - identity_document
  *               - email
  *               - password
  *             properties:
- *               name:
+ *               full_name:
  *                 type: string
  *                 example: Juan Perez
- *               username:
+ *               identity_document:
  *                 type: string
- *                 example: juanp
+ *                 example: 12345678
  *               email:
  *                 type: string
  *                 format: email
  *                 example: juanp@gmail.com
+ *               phone:
+ *                 type: string
+ *                 example: +51987654321
  *               password:
  *                 type: string
  *                 format: password
@@ -41,6 +44,26 @@ const router = Router();
  *     responses:
  *       201:
  *         description: Usuario registrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: "63f8c9e4f1a2b3c4d5e6f7g8"
+ *                 full_name:
+ *                   type: string
+ *                   example: "Juan Perez"
+ *                 identity_document:
+ *                   type: string
+ *                   example: "12345678"
+ *                 email:
+ *                   type: string
+ *                   example: "juanp@gmail.com"
+ *                 phone:
+ *                   type: string
+ *                   example: "+51987654321"
  *       400:
  *         description: Error de validación
  */
@@ -90,15 +113,18 @@ router.post("/register", validate({ body: registerSchema }), (req, res, next) =>
  *                     id:
  *                       type: string
  *                       example: "63f8c9e4f1a2b3c4d5e6f7g8"
- *                     name:
+ *                     full_name:
  *                       type: string
  *                       example: "Juan Perez"
- *                     username:
+ *                     identity_document:
  *                       type: string
- *                       example: "juanp"
+ *                       example: "12345678"
  *                     email:
  *                       type: string
  *                       example: "juanp@gmail.com"
+ *                     phone:
+ *                       type: string
+ *                       example: "+51987654321"
  *       401:
  *         description: Credenciales inválidas
  */

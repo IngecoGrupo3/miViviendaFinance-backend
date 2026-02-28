@@ -6,17 +6,19 @@ export async function register(data) {
     const passwordHash = await hashPassword(data.password);
 
     const created = await User.create({
-        name: data.name,
-        username: data.username,
+        fullName: data.full_name,
+        identityDocument: data.identity_document,
         email: data.email,
+        phone: data.phone,
         passwordHash
     });
 
     return {
         id: created._id.toString(),
-        name: created.name,
-        username: created.username,
-        email: created.email
+        full_name: created.fullName,
+        identity_document: created.identityDocument,
+        email: created.email,
+        phone: created.phone
     };
 }
 
@@ -43,9 +45,10 @@ export async function login({ email, password }) {
         accessToken,
         user: {
             id: user._id.toString(),
-            name: user.name,
-            username: user.username,
-            email: user.email
+            full_name: user.fullName,
+            identity_document: user.identityDocument,
+            email: user.email,
+            phone: user.phone
         }
     };
 }
