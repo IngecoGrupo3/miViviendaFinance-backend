@@ -110,7 +110,8 @@ const housingSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    strict: "throw"
+    strict: "throw",
+    versionKey: false
   }
 );
 

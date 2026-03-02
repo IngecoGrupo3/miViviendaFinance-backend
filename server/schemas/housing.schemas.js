@@ -23,4 +23,21 @@ export const createHousingSchema = z.object({
   imageUrl: z.string().url()
 }).strict();
 
-export const updateHousingSchema = createHousingSchema.partial();
+export const updateHousingSchema = z.object({
+  propertyType: z.enum(["Departamento", "Casa", "Dúplex", "Minidepartamento"]).optional(),
+  department: z.string().optional(),
+  province: z.string().optional(),
+  district: z.string().optional(),
+  area: z.number().optional(),
+  bedrooms: z.number().optional(),
+  bathrooms: z.number().optional(),
+  parkingSpaces: z.number().optional(),
+  floors: z.number().optional(),
+  priceInSoles: z.number().optional(),
+  priceInDollars: z.number().optional(),
+  realEstateProject: z.string().optional(),
+  address: z.string().optional(),
+  imageUrl: z.string().optional(),
+  description: z.string().optional(),
+  status: z.enum(["Disponible", "Reservado", "Vendido"]).optional()
+}).strict();

@@ -1,4 +1,4 @@
-import Housing from "../models/housing.model.js";
+import Housing from "../models/Housing.js";
 import mongoose from "mongoose";
 
 /**

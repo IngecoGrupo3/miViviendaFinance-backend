@@ -1,5 +1,5 @@
 import { Router } from "express";
-import housingController from "../controllers/housing.controller.js";
+import housingController from "../controllers/HousingController.js";
 import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
