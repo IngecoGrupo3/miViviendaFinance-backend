@@ -2,6 +2,7 @@ import { Router } from "express";
 import userRoutes from "./user.routes.js";
 import authRoutes from "./auth.routes.js";
 import clientRoutes from "./client.routes.js";
+import housingRoutes from "./housing.routes.js";
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.get("/health", (_req, res) => res.json({ status: "ok" }));
 router.use("/users", userRoutes);
 router.use("/auth", authRoutes);
 router.use("/clients", clientRoutes);
+router.use("/housing", housingRoutes);
 
 export default router;
