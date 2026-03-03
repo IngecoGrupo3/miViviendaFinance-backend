@@ -5,7 +5,6 @@ const PERIOD_DAYS_ORDINARY_YEAR = {
   BIMONTHLY: 60,
   MONTHLY: 30,
   BIWEEKLY: 15,
-  WEEKLY: 7,
   DAILY: 1
 };
 
@@ -145,6 +144,96 @@ function computeTermMonths({ term_value, term_unit }) {
   return term_unit === "YEARS" ? term_value * 12 : term_value;
 }
 
+function computeNPV(cashflows, rate) {
+  if (!Number.isFinite(rate) || rate <= -1) {
+    const err = new Error("discount_rate_periodic inválida para VAN");
+    err.status = 400;
+    throw err;
+  }
+
+  let sum = 0;
+  for (let t = 0; t < cashflows.length; t++) {
+    sum += cashflows[t] / (1 + rate) ** t;
+  }
+  return sum;
+}
+
+function computeIRR(cashflows, { tol = 1e-10, maxIter = 200 } = {}) {
+  const hasPos = cashflows.some((x) => x > 0);
+  const hasNeg = cashflows.some((x) => x < 0);
+  if (!hasPos || !hasNeg) return null;
+
+  const npv = (r) => {
+    let s = 0;
+    for (let t = 0; t < cashflows.length; t++) {
+      s += cashflows[t] / (1 + r) ** t;
+    }
+    return s;
+  };
+
+  let low = -0.999999;
+  let high = 10;
+  let fLow = npv(low);
+  let fHigh = npv(high);
+
+  let expand = 0;
+  while (Number.isFinite(fLow) && Number.isFinite(fHigh) && fLow * fHigh > 0 && expand < 60) {
+    high *= 2;
+    fHigh = npv(high);
+    expand++;
+    if (high > 1e6) break;
+  }
+
+  if (!Number.isFinite(fLow) || !Number.isFinite(fHigh) || fLow * fHigh > 0) return null;
+
+  for (let i = 0; i < maxIter; i++) {
+    const mid = (low + high) / 2;
+    const fMid = npv(mid);
+    if (!Number.isFinite(fMid)) return null;
+    if (Math.abs(fMid) <= tol) return mid;
+
+    if (fLow * fMid > 0) {
+      low = mid;
+      fLow = fMid;
+    } else {
+      high = mid;
+      fHigh = fMid;
+    }
+  }
+
+  return null;
+}
+
+function computeIndicators({ loan_amount, payment_days, rows, discount_rate_tea }) {
+  const cashflows = [loan_amount, ...rows.map((r) => -Number(r.payment_amount || 0))];
+
+  const tirPeriodic = computeIRR(cashflows);
+  const kPeriodsPerYear = 360 / payment_days;
+
+  const tceaAnnual =
+    tirPeriodic === null ? null : (1 + tirPeriodic) ** kPeriodsPerYear - 1;
+
+  const teaDecimal =
+    typeof discount_rate_tea === "number" ? discount_rate_tea / 100 : null;
+  const discountRatePeriodic =
+    teaDecimal === null ? null : (1 + teaDecimal) ** (payment_days / 360) - 1;
+
+  const van =
+    discountRatePeriodic === null ? null : computeNPV(cashflows, discountRatePeriodic);
+
+  return {
+    indicators: {
+      tir_periodic: tirPeriodic === null ? null : roundTo(tirPeriodic, 10),
+      tcea_annual: tceaAnnual === null ? null : roundTo(tceaAnnual, 10),
+      van: van === null ? null : roundTo(van, 7),
+      k_periods_per_year: kPeriodsPerYear,
+      discount_rate_periodic:
+        discountRatePeriodic === null ? null : roundTo(discountRatePeriodic, 10)
+    },
+    cashflows
+  };
+}
+
 export function buildLoanPlanRatePreview(inputs) {
   const termMonths = computeTermMonths(inputs);
   const paymentDays = periodToDays(inputs.payment_frequency);
@@ -242,6 +331,39 @@ export function buildLoanPlanRatePreview(inputs) {
     };
   });
 
+  const paymentSchedule =
+    inputs.rate_mode === "CONSTANT"
+      ? buildConstantPaymentSchedule({
+          principal: principalAfterGrace,
+          ted: constantTed,
+          days_per_period: paymentDays,
+          n: totalPeriods,
+          grace:
+            graceMode === "CLASS_PERIODS"
+              ? { grace_mode: graceMode, graceMap }
+              : { grace_mode: graceMode }
+        })
+      : buildVariablePaymentSchedule({
+          principal: principalAfterGrace,
+          days_per_period: paymentDays,
+          n: totalPeriods,
+          rate_kind: inputs.rate_kind,
+          rate_period: inputs.rate_period,
+          capitalization: inputs.capitalization,
+          segments,
+          grace:
+            graceMode === "CLASS_PERIODS"
+              ? { grace_mode: graceMode, graceMap }
+              : { grace_mode: graceMode }
+        });
+
+  const { indicators, cashflows } = computeIndicators({
+    loan_amount: loanAmount,
+    payment_days: paymentDays,
+    rows: paymentSchedule.rows,
+    discount_rate_tea: inputs.discount_rate_tea
+  });
+
   return {
     loan_amount: roundTo(loanAmount, 7),
     net_price: roundTo(netPrice, 7),
@@ -262,34 +384,9 @@ export function buildLoanPlanRatePreview(inputs) {
         : {})
     },
     rates,
-    ...(inputs.rate_mode === "CONSTANT"
-      ? {
-          payment_schedule: buildConstantPaymentSchedule({
-            principal: principalAfterGrace,
-            ted: constantTed,
-            days_per_period: paymentDays,
-            n: totalPeriods,
-            grace:
-              graceMode === "CLASS_PERIODS"
-                ? { grace_mode: graceMode, graceMap }
-                : { grace_mode: graceMode }
-          })
-        }
-      : {
-          payment_schedule: buildVariablePaymentSchedule({
-            principal: principalAfterGrace,
-            days_per_period: paymentDays,
-            n: totalPeriods,
-            rate_kind: inputs.rate_kind,
-            rate_period: inputs.rate_period,
-            capitalization: inputs.capitalization,
-            segments,
-            grace:
-              graceMode === "CLASS_PERIODS"
-                ? { grace_mode: graceMode, graceMap }
-                : { grace_mode: graceMode }
-          })
-        })
+    payment_schedule: paymentSchedule,
+    indicators,
+    ...(inputs.include_cashflows ? { cashflows: cashflows.map((c) => roundTo(c, 7)) } : {})
   };
 }
 

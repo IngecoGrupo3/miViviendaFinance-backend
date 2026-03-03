@@ -7,7 +7,6 @@ export const periodEnum = z.enum([
   "BIMONTHLY",
   "MONTHLY",
   "BIWEEKLY",
-  "WEEKLY",
   "DAILY"
 ]);
 
@@ -25,7 +24,6 @@ const PERIOD_DAYS_ORDINARY_YEAR = {
   BIMONTHLY: 60,
   MONTHLY: 30,
   BIWEEKLY: 15,
-  WEEKLY: 7,
   DAILY: 1
 };
 
@@ -125,11 +123,14 @@ export const createLoanPlanInputsSchema = z
       )
       .optional(),
 
-    discount_rate_kind: rateKindEnum,
-    discount_rate_value: z.number().min(0).max(100),
-    discount_rate_period: periodEnum,
-    discount_capitalization: periodEnum.optional(),
-    discount_effective_monthly_rate: z.number().min(0).max(100).optional()
+    discount_rate_tea: z
+      .number()
+      .min(0)
+      .max(100)
+      .optional()
+      .describe("COK como TEA en porcentaje (ej: 10 = 10%)"),
+
+    include_cashflows: z.boolean().optional().default(false)
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -146,14 +147,6 @@ export const createLoanPlanInputsSchema = z
         code: z.ZodIssueCode.custom,
         path: ["bono_amount"],
         message: "bono_amount debe ser 0 cuando apply_bono es false"
-      });
-    }
-
-    if (data.discount_rate_kind === "NOMINAL" && !data.discount_capitalization) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["discount_capitalization"],
-        message: "discount_capitalization es obligatorio cuando discount_rate_kind es NOMINAL"
       });
     }
 

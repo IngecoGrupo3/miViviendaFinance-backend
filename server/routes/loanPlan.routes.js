@@ -40,9 +40,6 @@ const router = Router();
  *               - rate_kind
  *               - rate_period
  *               - rate_segments
- *               - discount_rate_kind
- *               - discount_rate_value
- *               - discount_rate_period
  *             properties:
  *               simulation_id:
  *                 type: string
@@ -85,7 +82,7 @@ const router = Router();
  *                 example: 195000
  *               payment_frequency:
  *                 type: string
- *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, WEEKLY, DAILY]
+ *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, DAILY]
  *                 example: SEMIANNUAL
  *               term_value:
  *                 type: integer
@@ -104,11 +101,11 @@ const router = Router();
  *                 example: NOMINAL
  *               rate_period:
  *                 type: string
- *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, WEEKLY, DAILY]
+ *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, DAILY]
  *                 example: ANNUAL
  *               capitalization:
  *                 type: string
- *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, WEEKLY, DAILY]
+ *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, DAILY]
  *                 description: Obligatorio si rate_kind es NOMINAL
  *                 example: DAILY
  *               rate_segments:
@@ -155,24 +152,14 @@ const router = Router();
  *                     to_period:
  *                       type: integer
  *                       example: 6
- *               discount_rate_kind:
- *                 type: string
- *                 enum: [EFFECTIVE, NOMINAL]
- *                 example: EFFECTIVE
- *               discount_rate_value:
+ *               discount_rate_tea:
  *                 type: number
+ *                 description: "COK como TEA en porcentaje (ej: 10 = 10%)"
  *                 example: 10
- *               discount_rate_period:
- *                 type: string
- *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, WEEKLY, DAILY]
- *                 example: ANNUAL
- *               discount_capitalization:
- *                 type: string
- *                 enum: [ANNUAL, SEMIANNUAL, QUARTERLY, BIMONTHLY, MONTHLY, BIWEEKLY, WEEKLY, DAILY]
- *                 example: MONTHLY
- *               discount_effective_monthly_rate:
- *                 type: number
- *                 example: 0.7974
+ *               include_cashflows:
+ *                 type: boolean
+ *                 description: Si true, devuelve también cashflows [CF0..CFn]
+ *                 example: false
  *     responses:
  *       200:
  *         description: Preview de tasas (convertidas al periodo de pago) + monto del préstamo + cronograma (solo CONSTANT)
@@ -248,6 +235,33 @@ const router = Router();
  *                           ending_balance:
  *                             type: number
  *                             example: 182878.3333323
+ *                 indicators:
+ *                   type: object
+ *                   properties:
+ *                     tir_periodic:
+ *                       type: number
+ *                       nullable: true
+ *                       example: 0.0778673
+ *                     tcea_annual:
+ *                       type: number
+ *                       nullable: true
+ *                       example: 0.1618054
+ *                     van:
+ *                       type: number
+ *                       nullable: true
+ *                       example: 1234.56789
+ *                     k_periods_per_year:
+ *                       type: number
+ *                       example: 2
+ *                     discount_rate_periodic:
+ *                       type: number
+ *                       nullable: true
+ *                       example: 0.0465361
+ *                 cashflows:
+ *                   type: array
+ *                   description: Solo si include_cashflows=true
+ *                   items:
+ *                     type: number
  *       400:
  *         description: Error de validación
  */
