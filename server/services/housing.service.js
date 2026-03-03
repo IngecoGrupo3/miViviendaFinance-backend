@@ -4,7 +4,10 @@ import mongoose from "mongoose";
 /**
  * CREATE
  */
-export async function createHousing(data) {
+export async function createHousing(data, userId) {
+  // Agregar el userId al crear
+  data.createdBy = userId;
+  
   // Crear instancia primero para obtener _id
   const housing = new Housing(data);
 
@@ -25,8 +28,9 @@ export async function createHousing(data) {
 /**
  * LIST
  */
-export async function listHousing() {
-  return await Housing.find().sort({ createdAt: -1 });
+export async function listHousing(userId) {
+  // Filtrar solo las viviendas del usuario autenticado
+  return await Housing.find({ createdBy: userId }).sort({ createdAt: -1 });
 }
 
 /**
@@ -49,7 +53,7 @@ export async function getHousingById(id) {
 /**
  * UPDATE
  */
-export async function updateHousing(id, data) {
+export async function updateHousing(id, data, userId) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error("ID inválido");
   }
@@ -57,32 +61,43 @@ export async function updateHousing(id, data) {
   // Evitar que se edite el código manualmente
   delete data.code;
 
-  const housing = await Housing.findByIdAndUpdate(
+  // Verificar que la vivienda pertenece al usuario
+  const housing = await Housing.findOne({ _id: id, createdBy: userId });
+  
+  if (!housing) {
+    const err = new Error("Vivienda no encontrada o no tienes permisos para editarla");
+    err.status = 403;
+    throw err;
+  }
+
+  // Actualizar
+  const updatedHousing = await Housing.findByIdAndUpdate(
     id,
     data,
     { new: true, runValidators: true }
   );
 
-  if (!housing) {
-    throw new Error("Vivienda no encontrada");
-  }
-
-  return housing;
+  return updatedHousing;
 }
 
 /**
  * DELETE
  */
-export async function deleteHousing(id) {
+export async function deleteHousing(id, userId) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error("ID inválido");
   }
 
-  const housing = await Housing.findByIdAndDelete(id);
-
+  // Verificar que la vivienda pertenece al usuario
+  const housing = await Housing.findOne({ _id: id, createdBy: userId });
+  
   if (!housing) {
-    throw new Error("Vivienda no encontrada");
+    const err = new Error("Vivienda no encontrada o no tienes permisos para eliminarla");
+    err.status = 403;
+    throw err;
   }
+
+  await Housing.findByIdAndDelete(id);
 
   return { message: "Vivienda eliminada correctamente" };
 }

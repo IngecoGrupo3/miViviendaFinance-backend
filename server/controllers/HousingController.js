@@ -3,7 +3,8 @@ import * as housingService from "../services/housing.service.js";
 class HousingController {
   async create(req, res, next) {
     try {
-      const result = await housingService.createHousing(req.validated.body);
+      const userId = req.auth.sub; // Obtener userId del token
+      const result = await housingService.createHousing(req.validated.body, userId);
       res.status(201).json(result);
     } catch (err) {
       next(err);
@@ -12,7 +13,8 @@ class HousingController {
 
   async list(req, res, next) {
     try {
-      const result = await housingService.listHousing();
+      const userId = req.auth.sub; // Obtener userId del token
+      const result = await housingService.listHousing(userId);
       res.json(result);
     } catch (err) {
       next(err);
@@ -30,9 +32,11 @@ class HousingController {
 
   async update(req, res, next) {
     try {
+      const userId = req.auth.sub; // Obtener userId del token
       const result = await housingService.updateHousing(
         req.params.id,
-        req.validated.body
+        req.validated.body,
+        userId
       );
       res.json(result);
     } catch (err) {
@@ -42,7 +46,8 @@ class HousingController {
 
   async remove(req, res, next) {
     try {
-      const result = await housingService.deleteHousing(req.params.id);
+      const userId = req.auth.sub; // Obtener userId del token
+      const result = await housingService.deleteHousing(req.params.id, userId);
       res.json(result);
     } catch (err) {
       next(err);

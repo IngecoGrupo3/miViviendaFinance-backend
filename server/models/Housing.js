@@ -106,6 +106,12 @@ const housingSchema = new mongoose.Schema(
       type: String,
       enum: ["Disponible", "Reservado", "Vendido"],
       default: "Disponible"
+    },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
     }
   },
   {
