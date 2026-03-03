@@ -160,6 +160,37 @@ const router = Router();
  *                 type: boolean
  *                 description: Si true, devuelve también cashflows [CF0..CFn]
  *                 example: false
+ *               charges:
+ *                 type: object
+ *                 description: "Capa extra (seguros, comisiones, ITF). No amortiza capital."
+ *                 properties:
+ *                   insurance:
+ *                     type: object
+ *                     properties:
+ *                       desgravamen:
+ *                         type: object
+ *                         properties:
+ *                           enabled: { type: boolean, example: true }
+ *                           monthly_rate: { type: number, example: 0.00035 }
+ *                       bien:
+ *                         type: object
+ *                         properties:
+ *                           enabled: { type: boolean, example: true }
+ *                           monthly_rate: { type: number, example: 0.00025 }
+ *                           insured_value: { type: number, example: 160000 }
+ *                   fees:
+ *                     type: object
+ *                     properties:
+ *                       physical_statement:
+ *                         type: object
+ *                         properties:
+ *                           enabled: { type: boolean, example: true }
+ *                           amount: { type: number, example: 11 }
+ *                   itf:
+ *                     type: object
+ *                     properties:
+ *                       enabled: { type: boolean, example: true }
+ *                       rate: { type: number, example: 0.00005 }
  *     responses:
  *       200:
  *         description: Preview de tasas (convertidas al periodo de pago) + monto del préstamo + cronograma (solo CONSTANT)
@@ -235,6 +266,30 @@ const router = Router();
  *                           ending_balance:
  *                             type: number
  *                             example: 182878.3333323
+ *                           base_payment_amount:
+ *                             type: number
+ *                             example: 13245.1234567
+ *                           insurance_desgravamen_amount:
+ *                             type: number
+ *                             example: 31.5
+ *                           insurance_bien_amount:
+ *                             type: number
+ *                             example: 22.5
+ *                           fee_physical_statement_amount:
+ *                             type: number
+ *                             example: 11
+ *                           charges_subtotal_amount:
+ *                             type: number
+ *                             example: 65
+ *                           total_without_itf_amount:
+ *                             type: number
+ *                             example: 13310.1234567
+ *                           itf_amount:
+ *                             type: number
+ *                             example: 0.6655062
+ *                           total_payment_amount:
+ *                             type: number
+ *                             example: 13310.7889629
  *                 indicators:
  *                   type: object
  *                   properties:

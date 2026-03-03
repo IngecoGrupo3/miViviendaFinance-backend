@@ -130,7 +130,56 @@ export const createLoanPlanInputsSchema = z
       .optional()
       .describe("COK como TEA en porcentaje (ej: 10 = 10%)"),
 
-    include_cashflows: z.boolean().optional().default(false)
+    include_cashflows: z.boolean().optional().default(false),
+
+    charges: z
+      .object({
+        insurance: z
+          .object({
+            desgravamen: z
+              .object({
+                enabled: z.boolean(),
+                monthly_rate: z.number().min(0).optional(),
+                min_monthly_rate: z.number().min(0).optional(),
+                max_monthly_rate: z.number().min(0).optional()
+              })
+              .strict()
+              .optional(),
+            bien: z
+              .object({
+                enabled: z.boolean(),
+                monthly_rate: z.number().min(0).optional(),
+                insured_value: z.number().min(0).optional(),
+                min_monthly_rate: z.number().min(0).optional(),
+                max_monthly_rate: z.number().min(0).optional()
+              })
+              .strict()
+              .optional()
+          })
+          .strict()
+          .optional(),
+        fees: z
+          .object({
+            physical_statement: z
+              .object({
+                enabled: z.boolean(),
+                amount: z.number().min(0).optional()
+              })
+              .strict()
+              .optional()
+          })
+          .strict()
+          .optional(),
+        itf: z
+          .object({
+            enabled: z.boolean(),
+            rate: z.number().min(0).optional()
+          })
+          .strict()
+          .optional()
+      })
+      .strict()
+      .optional()
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -156,6 +205,68 @@ export const createLoanPlanInputsSchema = z
         path: ["capitalization"],
         message: "capitalization es obligatorio cuando rate_kind es NOMINAL"
       });
+    }
+
+    const charges = data.charges;
+    const des = charges?.insurance?.desgravamen;
+    if (des?.enabled) {
+      if (typeof des.monthly_rate !== "number") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "insurance", "desgravamen", "monthly_rate"],
+          message: "monthly_rate es obligatorio cuando desgravamen.enabled es true"
+        });
+      }
+      if (typeof des.monthly_rate === "number" && typeof des.min_monthly_rate === "number" && des.monthly_rate < des.min_monthly_rate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "insurance", "desgravamen", "monthly_rate"],
+          message: "monthly_rate está por debajo del mínimo permitido"
+        });
+      }
+      if (typeof des.monthly_rate === "number" && typeof des.max_monthly_rate === "number" && des.monthly_rate > des.max_monthly_rate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "insurance", "desgravamen", "monthly_rate"],
+          message: "monthly_rate está por encima del máximo permitido"
+        });
+      }
+    }
+
+    const bien = charges?.insurance?.bien;
+    if (bien?.enabled) {
+      if (typeof bien.monthly_rate !== "number") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "insurance", "bien", "monthly_rate"],
+          message: "monthly_rate es obligatorio cuando bien.enabled es true"
+        });
+      }
+      if (typeof bien.monthly_rate === "number" && typeof bien.min_monthly_rate === "number" && bien.monthly_rate < bien.min_monthly_rate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "insurance", "bien", "monthly_rate"],
+          message: "monthly_rate está por debajo del mínimo permitido"
+        });
+      }
+      if (typeof bien.monthly_rate === "number" && typeof bien.max_monthly_rate === "number" && bien.monthly_rate > bien.max_monthly_rate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "insurance", "bien", "monthly_rate"],
+          message: "monthly_rate está por encima del máximo permitido"
+        });
+      }
+    }
+
+    const physical = charges?.fees?.physical_statement;
+    if (physical?.enabled) {
+      if (typeof physical.amount !== "number") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["charges", "fees", "physical_statement", "amount"],
+          message: "amount es obligatorio cuando physical_statement.enabled es true"
+        });
+      }
     }
 
     if (data.down_payment_mode === "PERCENT") {

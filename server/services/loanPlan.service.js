@@ -205,7 +205,10 @@ function computeIRR(cashflows, { tol = 1e-10, maxIter = 200 } = {}) {
 }
 
 function computeIndicators({ loan_amount, payment_days, rows, discount_rate_tea }) {
-  const cashflows = [loan_amount, ...rows.map((r) => -Number(r.payment_amount || 0))];
+  const cashflows = [
+    loan_amount,
+    ...rows.map((r) => -Number((r.total_payment_amount ?? r.payment_amount) || 0))
+  ];
 
   const tirPeriodic = computeIRR(cashflows);
   const kPeriodsPerYear = 360 / payment_days;
@@ -234,6 +237,81 @@ function computeIndicators({ loan_amount, payment_days, rows, discount_rate_tea 
   };
 }
 
+function normalizeCharges({ charges, net_price, property_price }) {
+  const insuranceDes = charges?.insurance?.desgravamen;
+  const insuranceBien = charges?.insurance?.bien;
+  const feePhysical = charges?.fees?.physical_statement;
+  const itf = charges?.itf;
+
+  const desgravamen = {
+    enabled: Boolean(insuranceDes?.enabled),
+    monthly_rate: typeof insuranceDes?.monthly_rate === "number" ? insuranceDes.monthly_rate : 0
+  };
+
+  const bien = {
+    enabled: Boolean(insuranceBien?.enabled),
+    monthly_rate: typeof insuranceBien?.monthly_rate === "number" ? insuranceBien.monthly_rate : 0,
+    insured_value:
+      typeof insuranceBien?.insured_value === "number"
+        ? insuranceBien.insured_value
+        : typeof net_price === "number"
+        ? net_price
+        : property_price
+  };
+
+  const physical_statement = {
+    enabled: Boolean(feePhysical?.enabled),
+    amount: typeof feePhysical?.amount === "number" ? feePhysical.amount : 0
+  };
+
+  const itfConfig = {
+    enabled: Boolean(itf?.enabled),
+    rate: typeof itf?.rate === "number" ? itf.rate : 0.00005
+  };
+
+  return { desgravamen, bien, physical_statement, itf: itfConfig };
+}
+
+function enrichScheduleRowWithCharges({ row, payment_days, chargesConfig }) {
+  const basePaymentAmount = Number(row.payment_amount || 0);
+  const startingBalance = Number(row.starting_balance || 0);
+
+  const rateForPeriod = (monthlyRate) => (monthlyRate / 30) * payment_days;
+
+  const insuranceDesgravamenAmount = chargesConfig.desgravamen.enabled
+    ? startingBalance * rateForPeriod(chargesConfig.desgravamen.monthly_rate)
+    : 0;
+
+  const insuranceBienAmount = chargesConfig.bien.enabled
+    ? chargesConfig.bien.insured_value * rateForPeriod(chargesConfig.bien.monthly_rate)
+    : 0;
+
+  const feePhysicalStatementAmount = chargesConfig.physical_statement.enabled
+    ? chargesConfig.physical_statement.amount
+    : 0;
+
+  const chargesSubtotalAmount =
+    insuranceDesgravamenAmount + insuranceBienAmount + feePhysicalStatementAmount;
+
+  const totalWithoutItfAmount = basePaymentAmount + chargesSubtotalAmount;
+
+  const itfAmount = chargesConfig.itf.enabled ? chargesConfig.itf.rate * totalWithoutItfAmount : 0;
+
+  const totalPaymentAmount = totalWithoutItfAmount + itfAmount;
+
+  return {
+    ...row,
+    base_payment_amount: roundTo(basePaymentAmount, 7),
+    insurance_desgravamen_amount: roundTo(insuranceDesgravamenAmount, 7),
+    insurance_bien_amount: roundTo(insuranceBienAmount, 7),
+    fee_physical_statement_amount: roundTo(feePhysicalStatementAmount, 7),
+    charges_subtotal_amount: roundTo(chargesSubtotalAmount, 7),
+    total_without_itf_amount: roundTo(totalWithoutItfAmount, 7),
+    itf_amount: roundTo(itfAmount, 7),
+    total_payment_amount: roundTo(totalPaymentAmount, 7)
+  };
+}
+
 export function buildLoanPlanRatePreview(inputs) {
   const termMonths = computeTermMonths(inputs);
   const paymentDays = periodToDays(inputs.payment_frequency);
@@ -250,6 +328,11 @@ export function buildLoanPlanRatePreview(inputs) {
     down_payment_amount: inputs.down_payment_amount ?? 0
   });
   const loanAmount = netPrice - downPayment;
+  const chargesConfig = normalizeCharges({
+    charges: inputs.charges,
+    net_price: netPrice,
+    property_price: inputs.property_price
+  });
 
   const basePaymentPeriod = inputs.payment_frequency;
   const segments =
@@ -300,7 +383,16 @@ export function buildLoanPlanRatePreview(inputs) {
   const principalBeforeGrace = loanAmount;
   const principalAfterGrace =
     graceMode === "SCOTIA_DAYS" && scotiaGraceDays > 0 && tedForScotiaGrace !== null
-      ? principalBeforeGrace * (1 + tedForScotiaGrace) ** scotiaGraceDays
+      ? (() => {
+          const ig = principalBeforeGrace * ((1 + tedForScotiaGrace) ** scotiaGraceDays - 1);
+          const sdg = chargesConfig.desgravamen.enabled
+            ? principalBeforeGrace * (chargesConfig.desgravamen.monthly_rate / 30) * scotiaGraceDays
+            : 0;
+          const sbg = chargesConfig.bien.enabled
+            ? chargesConfig.bien.insured_value * (chargesConfig.bien.monthly_rate / 30) * scotiaGraceDays
+            : 0;
+          return principalBeforeGrace + ig + sdg + sbg;
+        })()
       : principalBeforeGrace;
 
   const rates = segments.map((s) => {
@@ -357,10 +449,15 @@ export function buildLoanPlanRatePreview(inputs) {
               : { grace_mode: graceMode }
         });
 
+  const enrichedRows = paymentSchedule.rows.map((r) =>
+    enrichScheduleRowWithCharges({ row: r, payment_days: paymentDays, chargesConfig })
+  );
+  const paymentScheduleWithCharges = { ...paymentSchedule, rows: enrichedRows };
+
   const { indicators, cashflows } = computeIndicators({
     loan_amount: loanAmount,
     payment_days: paymentDays,
-    rows: paymentSchedule.rows,
+    rows: paymentScheduleWithCharges.rows,
     discount_rate_tea: inputs.discount_rate_tea
   });
 
@@ -384,7 +481,7 @@ export function buildLoanPlanRatePreview(inputs) {
         : {})
     },
     rates,
-    payment_schedule: paymentSchedule,
+    payment_schedule: paymentScheduleWithCharges,
     indicators,
     ...(inputs.include_cashflows ? { cashflows: cashflows.map((c) => roundTo(c, 7)) } : {})
   };
