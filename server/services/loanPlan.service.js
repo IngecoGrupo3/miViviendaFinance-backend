@@ -31,7 +31,7 @@ function periodToDays(period) {
 function toEffectivePeriodicRate({ rate_kind, rate_value, rate_period, capitalization }) {
   const j = rate_value / 100;
   if (rate_kind === "EFFECTIVE") {
-    return roundTo(j, 7);
+    return j;
   }
 
   if (rate_kind !== "NOMINAL") {
@@ -64,14 +64,45 @@ function toEffectivePeriodicRate({ rate_kind, rate_value, rate_period, capitaliz
 
   const periodic = j / m;
   const effective = (1 + periodic) ** m - 1;
-  return roundTo(effective, 7);
+  return effective;
 }
 
 function convertEffectiveRateToTargetPeriod({ effective_rate, from_period, to_period }) {
   const fromDays = periodToDays(from_period);
   const toDays = periodToDays(to_period);
   const converted = (1 + effective_rate) ** (toDays / fromDays) - 1;
-  return roundTo(converted, 7);
+  return converted;
+}
+
+function toEffectiveDailyRate({ rate_kind, rate_value, rate_period, capitalization }) {
+  const effectiveInRatePeriod = toEffectivePeriodicRate({
+    rate_kind,
+    rate_value,
+    rate_period,
+    capitalization
+  });
+  const days = periodToDays(rate_period);
+  const ted = (1 + effectiveInRatePeriod) ** (1 / days) - 1;
+  return ted;
+}
+
+function computeBasePayment({ principal, ip, n }) {
+  if (n <= 0 || !Number.isInteger(n)) {
+    const err = new Error("Número total de cuotas inválido");
+    err.status = 400;
+    throw err;
+  }
+
+  if (Math.abs(ip) < 1e-15) return principal / n;
+
+  const denominator = 1 - (1 + ip) ** -n;
+  if (denominator === 0) {
+    const err = new Error("No se pudo calcular la cuota base (denominador 0)");
+    err.status = 400;
+    throw err;
+  }
+
+  return (principal * ip) / denominator;
 }
 
 function ensureIntegerCount(count, context) {
@@ -100,24 +131,41 @@ export function buildLoanPlanRatePreview(inputs) {
   const totalPeriods = totalDays / paymentDays;
   ensureIntegerCount(totalPeriods, "term_value/term_unit vs payment_frequency");
 
-  const netPrice = roundTo(
-    inputs.property_price - (inputs.apply_bono ? inputs.bono_amount : 0),
-    7
-  );
+  const netPrice = inputs.property_price - (inputs.apply_bono ? inputs.bono_amount : 0);
 
-  const downPayment = roundTo(
-    computeDownPayment({
-      property_price: netPrice,
-      down_payment_mode: inputs.down_payment_mode,
-      down_payment_percent: inputs.down_payment_percent ?? 0,
-      down_payment_amount: inputs.down_payment_amount ?? 0
-    }),
-    7
-  );
-  const loanAmount = roundTo(netPrice - downPayment, 7);
+  const downPayment = computeDownPayment({
+    property_price: netPrice,
+    down_payment_mode: inputs.down_payment_mode,
+    down_payment_percent: inputs.down_payment_percent ?? 0,
+    down_payment_amount: inputs.down_payment_amount ?? 0
+  });
+  const loanAmount = netPrice - downPayment;
 
   const basePaymentPeriod = inputs.payment_frequency;
-  const segments = inputs.rate_segments || [];
+  const segments =
+    Array.isArray(inputs.rate_segments) && inputs.rate_segments.length > 0
+      ? inputs.rate_segments
+      : typeof inputs.rate_value === "number"
+      ? [{ from_period: 1, to_period: totalPeriods, rate_value: inputs.rate_value }]
+      : [];
+
+  if (inputs.rate_mode === "CONSTANT" && segments.length !== 1) {
+    const err = new Error("rate_segments debe tener 1 segmento cuando rate_mode es CONSTANT");
+    err.status = 400;
+    throw err;
+  }
+
+  const constantTed =
+    inputs.rate_mode === "CONSTANT"
+      ? toEffectiveDailyRate({
+          rate_kind: inputs.rate_kind,
+          rate_value: segments[0]?.rate_value,
+          rate_period: inputs.rate_period,
+          capitalization: inputs.capitalization
+        })
+      : null;
+  const constantIp =
+    inputs.rate_mode === "CONSTANT" ? (1 + constantTed) ** paymentDays - 1 : null;
 
   const rates = segments.map((s) => {
     const effectiveInSourcePeriod = toEffectivePeriodicRate({
@@ -127,11 +175,14 @@ export function buildLoanPlanRatePreview(inputs) {
       capitalization: inputs.capitalization
     });
 
-    const effectiveInPaymentPeriod = convertEffectiveRateToTargetPeriod({
-      effective_rate: effectiveInSourcePeriod,
-      from_period: inputs.rate_period,
-      to_period: basePaymentPeriod
-    });
+    const effectiveInPaymentPeriod =
+      inputs.rate_mode === "CONSTANT"
+        ? constantIp
+        : convertEffectiveRateToTargetPeriod({
+            effective_rate: effectiveInSourcePeriod,
+            from_period: inputs.rate_period,
+            to_period: basePaymentPeriod
+          });
 
     return {
       from_period: s.from_period,
@@ -143,19 +194,69 @@ export function buildLoanPlanRatePreview(inputs) {
         rate_period: inputs.rate_period,
         ...(inputs.capitalization ? { capitalization: inputs.capitalization } : {})
       },
-      effective_rate_payment_period: effectiveInPaymentPeriod,
+      effective_rate_payment_period: roundTo(effectiveInPaymentPeriod, 7),
       effective_rate_payment_period_percent: percent4(effectiveInPaymentPeriod)
     };
   });
 
   return {
-    loan_amount: loanAmount,
-    net_price: netPrice,
-    down_payment_amount: downPayment,
+    loan_amount: roundTo(loanAmount, 7),
+    net_price: roundTo(netPrice, 7),
+    down_payment_amount: roundTo(downPayment, 7),
     term_months: termMonths,
     payment_frequency: basePaymentPeriod,
     total_periods: totalPeriods,
     rate_mode: inputs.rate_mode,
-    rates
+    rates,
+    ...(inputs.rate_mode === "CONSTANT"
+      ? {
+          payment_schedule: buildConstantPaymentSchedule({
+            principal: loanAmount,
+            ted: constantTed,
+            days_per_period: paymentDays,
+            n: totalPeriods
+          })
+        }
+      : {})
+  };
+}
+
+export function buildConstantPaymentSchedule({ principal, ted, days_per_period, n }) {
+  const ip = (1 + ted) ** days_per_period - 1;
+  const basePayment = computeBasePayment({ principal, ip, n });
+
+  let balance = principal;
+  const schedule = [];
+
+  for (let k = 1; k <= n; k++) {
+    const startingBalance = balance;
+    const interestFactor = ip;
+    const interest = interestFactor * startingBalance;
+    let amortization = basePayment - interest;
+    let payment = basePayment;
+
+    if (k === n) {
+      amortization = startingBalance;
+      payment = roundTo(interest + amortization, 7);
+      balance = 0;
+    } else {
+      balance = balance - amortization;
+    }
+
+    schedule.push({
+      period_number: k,
+      starting_balance: roundTo(startingBalance, 7),
+      payment_amount: roundTo(payment, 7),
+      interest_amount: roundTo(interest, 7),
+      amortization_amount: roundTo(amortization, 7),
+      ending_balance: roundTo(balance, 7)
+    });
+  }
+
+  return {
+    ted: roundTo(ted, 7),
+    ip: roundTo(ip, 7),
+    base_payment_amount: roundTo(basePayment, 7),
+    rows: schedule
   };
 }

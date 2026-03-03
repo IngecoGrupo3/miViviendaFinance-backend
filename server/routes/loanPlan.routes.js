@@ -167,7 +167,7 @@ const router = Router();
  *                 example: 0.7974
  *     responses:
  *       200:
- *         description: Preview de tasas (convertidas al periodo de pago) + monto del préstamo
+ *         description: Preview de tasas (convertidas al periodo de pago) + monto del préstamo + cronograma (solo CONSTANT)
  *         content:
  *           application/json:
  *             schema:
@@ -202,6 +202,42 @@ const router = Router();
  *                       effective_rate_payment_period_percent:
  *                         type: number
  *                         example: 12.6825
+ *                 payment_schedule:
+ *                   type: object
+ *                   description: Solo se devuelve cuando rate_mode es CONSTANT
+ *                   properties:
+ *                     ted:
+ *                       type: number
+ *                       example: 0.0003856
+ *                     ip:
+ *                       type: number
+ *                       example: 0.0674389
+ *                     base_payment_amount:
+ *                       type: number
+ *                       example: 13245.1234567
+ *                     rows:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           period_number:
+ *                             type: integer
+ *                             example: 1
+ *                           starting_balance:
+ *                             type: number
+ *                             example: 195000
+ *                           payment_amount:
+ *                             type: number
+ *                             example: 13245.1234567
+ *                           interest_amount:
+ *                             type: number
+ *                             example: 1123.456789
+ *                           amortization_amount:
+ *                             type: number
+ *                             example: 12121.6666677
+ *                           ending_balance:
+ *                             type: number
+ *                             example: 182878.3333323
  *       400:
  *         description: Error de validación
  */
