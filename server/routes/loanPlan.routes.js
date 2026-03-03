@@ -130,9 +130,17 @@ const router = Router();
  *                     rate_value:
  *                       type: number
  *                       example: 15
+ *               grace_mode:
+ *                 type: string
+ *                 enum: [NONE, SCOTIA_DAYS, CLASS_PERIODS]
+ *                 example: NONE
+ *               scotia_grace_days:
+ *                 type: integer
+ *                 description: Obligatorio si grace_mode es SCOTIA_DAYS
+ *                 example: 30
  *               grace_segments:
  *                 type: array
- *                 description: Segmentos de gracia por periodo (se registran separados de tasas)
+ *                 description: Segmentos de gracia por periodo (solo si grace_mode es CLASS_PERIODS)
  *                 items:
  *                   type: object
  *                   required: [grace_kind, from_period, to_period]

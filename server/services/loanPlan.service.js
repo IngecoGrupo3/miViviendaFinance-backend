@@ -113,6 +113,27 @@ function ensureIntegerCount(count, context) {
   }
 }
 
+function buildGraceMap({ n, grace_segments }) {
+  const map = Array(n + 1).fill(null);
+  const segments = Array.isArray(grace_segments) ? grace_segments : [];
+
+  for (const seg of segments) {
+    for (let k = seg.from_period; k <= seg.to_period; k++) {
+      map[k] = seg.grace_kind;
+    }
+  }
+
+  return map;
+}
+
+function countRemainingNormalPeriods({ graceMap, from_period, n }) {
+  let count = 0;
+  for (let k = from_period; k <= n; k++) {
+    if (!graceMap[k]) count++;
+  }
+  return count;
+}
+
 function computeDownPayment({ property_price, down_payment_mode, down_payment_percent, down_payment_amount }) {
   if (down_payment_mode === "PERCENT") {
     return (property_price * down_payment_percent) / 100;
@@ -167,6 +188,32 @@ export function buildLoanPlanRatePreview(inputs) {
   const constantIp =
     inputs.rate_mode === "CONSTANT" ? (1 + constantTed) ** paymentDays - 1 : null;
 
+  const graceMode = inputs.grace_mode ?? "NONE";
+  const scotiaGraceDays = typeof inputs.scotia_grace_days === "number" ? inputs.scotia_grace_days : 0;
+  const graceMap =
+    graceMode === "CLASS_PERIODS"
+      ? buildGraceMap({ n: totalPeriods, grace_segments: inputs.grace_segments })
+      : null;
+
+  const segmentForPeriod1 =
+    segments.find((s) => s.from_period <= 1 && s.to_period >= 1) ?? segments[0] ?? null;
+
+  const tedForScotiaGrace =
+    graceMode === "SCOTIA_DAYS" && segmentForPeriod1
+      ? toEffectiveDailyRate({
+          rate_kind: inputs.rate_kind,
+          rate_value: segmentForPeriod1.rate_value,
+          rate_period: inputs.rate_period,
+          capitalization: inputs.capitalization
+        })
+      : null;
+
+  const principalBeforeGrace = loanAmount;
+  const principalAfterGrace =
+    graceMode === "SCOTIA_DAYS" && scotiaGraceDays > 0 && tedForScotiaGrace !== null
+      ? principalBeforeGrace * (1 + tedForScotiaGrace) ** scotiaGraceDays
+      : principalBeforeGrace;
+
   const rates = segments.map((s) => {
     const tedSegment =
       inputs.rate_mode === "CONSTANT"
@@ -203,53 +250,114 @@ export function buildLoanPlanRatePreview(inputs) {
     payment_frequency: basePaymentPeriod,
     total_periods: totalPeriods,
     rate_mode: inputs.rate_mode,
+    grace: {
+      grace_mode: graceMode,
+      ...(graceMode === "SCOTIA_DAYS"
+        ? {
+            scotia_grace_days: scotiaGraceDays,
+            principal_before_grace: roundTo(principalBeforeGrace, 7),
+            principal_after_grace: roundTo(principalAfterGrace, 7),
+            ted_used: tedForScotiaGrace !== null ? roundTo(tedForScotiaGrace, 7) : null
+          }
+        : {})
+    },
     rates,
     ...(inputs.rate_mode === "CONSTANT"
       ? {
           payment_schedule: buildConstantPaymentSchedule({
-            principal: loanAmount,
+            principal: principalAfterGrace,
             ted: constantTed,
             days_per_period: paymentDays,
-            n: totalPeriods
+            n: totalPeriods,
+            grace:
+              graceMode === "CLASS_PERIODS"
+                ? { grace_mode: graceMode, graceMap }
+                : { grace_mode: graceMode }
           })
         }
       : {
           payment_schedule: buildVariablePaymentSchedule({
-            principal: loanAmount,
+            principal: principalAfterGrace,
             days_per_period: paymentDays,
             n: totalPeriods,
             rate_kind: inputs.rate_kind,
             rate_period: inputs.rate_period,
             capitalization: inputs.capitalization,
-            segments
+            segments,
+            grace:
+              graceMode === "CLASS_PERIODS"
+                ? { grace_mode: graceMode, graceMap }
+                : { grace_mode: graceMode }
           })
         })
   };
 }
 
-export function buildConstantPaymentSchedule({ principal, ted, days_per_period, n }) {
+export function buildConstantPaymentSchedule({ principal, ted, days_per_period, n, grace }) {
   const ip = (1 + ted) ** days_per_period - 1;
-  const basePayment = computeBasePayment({ principal, ip, n });
+  const graceMode = grace?.grace_mode ?? "NONE";
+  const graceMap = graceMode === "CLASS_PERIODS" ? grace?.graceMap : null;
+
+  const basePayment =
+    graceMode === "CLASS_PERIODS" && graceMap ? null : computeBasePayment({ principal, ip, n });
 
   let balance = principal;
-  const schedule = [];
+  const rows = [];
+  let currentPayment = basePayment;
+  const paymentRecalculations = [];
 
   for (let k = 1; k <= n; k++) {
     const startingBalance = balance;
-    const interestFactor = ip;
-    const interest = interestFactor * startingBalance;
-    let amortization = basePayment - interest;
-    let payment = basePayment;
+    const graceKind = graceMap ? graceMap[k] : null;
 
-    if (k === n) {
-      amortization = startingBalance;
-      payment = roundTo(interest + amortization, 7);
-      balance = 0;
+    const interest = ip * startingBalance;
+    let payment = 0;
+    let amortization = 0;
+
+    if (graceMode === "CLASS_PERIODS" && graceKind === "TOTAL") {
+      payment = 0;
+      amortization = 0;
+      balance = startingBalance + interest;
+    } else if (graceMode === "CLASS_PERIODS" && graceKind === "PARTIAL") {
+      payment = interest;
+      amortization = 0;
+      balance = startingBalance;
     } else {
-      balance = balance - amortization;
+      if (graceMode === "CLASS_PERIODS" && graceMap) {
+        const prevGrace = k > 1 ? graceMap[k - 1] : null;
+        if (k === 1 || prevGrace) {
+          const remainingNormal = countRemainingNormalPeriods({ graceMap, from_period: k, n });
+          if (remainingNormal <= 0) {
+            const err = new Error("No hay periodos normales restantes para recalcular cuota");
+            err.status = 400;
+            throw err;
+          }
+          currentPayment = computeBasePayment({ principal: startingBalance, ip, n: remainingNormal });
+          paymentRecalculations.push({
+            from_period: k,
+            payment_amount: roundTo(currentPayment, 7),
+            remaining_normal_periods: remainingNormal
+          });
+        }
+      }
+
+      payment = currentPayment;
+      amortization = payment - interest;
+      balance = startingBalance - amortization;
     }
 
-    schedule.push({
+    if (k === n) {
+      if (graceMode === "CLASS_PERIODS" && graceMap && graceMap[k]) {
+        const err = new Error("El último periodo no puede ser de gracia");
+        err.status = 400;
+        throw err;
+      }
+      amortization = startingBalance;
+      payment = interest + amortization;
+      balance = 0;
+    }
+
+    rows.push({
       period_number: k,
       starting_balance: roundTo(startingBalance, 7),
       payment_amount: roundTo(payment, 7),
@@ -262,8 +370,9 @@ export function buildConstantPaymentSchedule({ principal, ted, days_per_period, 
   return {
     ted: roundTo(ted, 7),
     ip: roundTo(ip, 7),
-    base_payment_amount: roundTo(basePayment, 7),
-    rows: schedule
+    ...(basePayment !== null ? { base_payment_amount: roundTo(basePayment, 7) } : {}),
+    ...(paymentRecalculations.length > 0 ? { payment_recalculations: paymentRecalculations } : {}),
+    rows
   };
 }
 
@@ -274,11 +383,16 @@ export function buildVariablePaymentSchedule({
   rate_kind,
   rate_period,
   capitalization,
-  segments
+  segments,
+  grace
 }) {
+  const graceMode = grace?.grace_mode ?? "NONE";
+  const graceMap = graceMode === "CLASS_PERIODS" ? grace?.graceMap : null;
+
   let balance = principal;
   const rows = [];
   const segmentSummaries = [];
+  const paymentRecalculations = [];
 
   let currentSegmentIndex = 0;
   let currentIp = null;
@@ -311,9 +425,7 @@ export function buildVariablePaymentSchedule({
         capitalization
       });
       currentIp = (1 + currentTed) ** days_per_period - 1;
-
-      const remaining = n - k + 1;
-      currentPayment = computeBasePayment({ principal: balance, ip: currentIp, n: remaining });
+      currentPayment = null; // fuerza recálculo en el primer periodo normal del tramo
 
       segmentSummaries.push({
         from_period: seg.from_period,
@@ -321,21 +433,71 @@ export function buildVariablePaymentSchedule({
         rate_value: roundTo(seg.rate_value, 7),
         ted: roundTo(currentTed, 7),
         tep: roundTo(currentIp, 7),
-        payment_amount: roundTo(currentPayment, 7)
+        payment_amount: null,
+        payment_from_period: null
       });
     }
 
+    const graceKind = graceMap ? graceMap[k] : null;
     const startingBalance = balance;
     const interest = currentIp * startingBalance;
-    let amortization = currentPayment - interest;
-    let payment = currentPayment;
+
+    let payment = 0;
+    let amortization = 0;
+
+    if (graceMode === "CLASS_PERIODS" && graceKind === "TOTAL") {
+      payment = 0;
+      amortization = 0;
+      balance = startingBalance + interest;
+    } else if (graceMode === "CLASS_PERIODS" && graceKind === "PARTIAL") {
+      payment = interest;
+      amortization = 0;
+      balance = startingBalance;
+    } else {
+      const prevGrace = graceMap && k > 1 ? graceMap[k - 1] : null;
+      const shouldRecalc = currentPayment === null || isSegmentStart || (graceMode === "CLASS_PERIODS" && prevGrace);
+
+      if (shouldRecalc) {
+        const remaining =
+          graceMode === "CLASS_PERIODS" && graceMap
+            ? countRemainingNormalPeriods({ graceMap, from_period: k, n })
+            : n - k + 1;
+
+        if (remaining <= 0) {
+          const err = new Error("No hay periodos normales restantes para recalcular cuota");
+          err.status = 400;
+          throw err;
+        }
+
+        currentPayment = computeBasePayment({ principal: startingBalance, ip: currentIp, n: remaining });
+        paymentRecalculations.push({
+          from_period: k,
+          payment_amount: roundTo(currentPayment, 7),
+          remaining_periods: remaining,
+          rate_value: roundTo(seg.rate_value, 7)
+        });
+
+        const lastSummary = segmentSummaries[segmentSummaries.length - 1];
+        if (lastSummary && lastSummary.payment_amount === null) {
+          lastSummary.payment_amount = roundTo(currentPayment, 7);
+          lastSummary.payment_from_period = k;
+        }
+      }
+
+      payment = currentPayment;
+      amortization = payment - interest;
+      balance = startingBalance - amortization;
+    }
 
     if (k === n) {
+      if (graceMode === "CLASS_PERIODS" && graceMap && graceMap[k]) {
+        const err = new Error("El último periodo no puede ser de gracia");
+        err.status = 400;
+        throw err;
+      }
       amortization = startingBalance;
       payment = interest + amortization;
       balance = 0;
-    } else {
-      balance = balance - amortization;
     }
 
     rows.push({
@@ -350,6 +512,7 @@ export function buildVariablePaymentSchedule({
 
   return {
     segments: segmentSummaries,
+    ...(paymentRecalculations.length > 0 ? { payment_recalculations: paymentRecalculations } : {}),
     rows
   };
 }

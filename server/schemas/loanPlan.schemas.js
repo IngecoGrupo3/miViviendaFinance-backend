@@ -13,6 +13,7 @@ export const periodEnum = z.enum([
 
 const rateKindEnum = z.enum(["EFFECTIVE", "NOMINAL"]);
 const graceKindEnum = z.enum(["TOTAL", "PARTIAL"]);
+const graceModeEnum = z.enum(["NONE", "SCOTIA_DAYS", "CLASS_PERIODS"]);
 const downPaymentModeEnum = z.enum(["PERCENT", "AMOUNT"]);
 const rateModeEnum = z.enum(["CONSTANT", "VARIABLE"]);
 const termUnitEnum = z.enum(["YEARS", "MONTHS"]);
@@ -101,6 +102,8 @@ export const createLoanPlanInputsSchema = z
     capitalization: periodEnum.optional(),
     rate_segments: z.array(rateSegmentInputSchema).min(1),
 
+    grace_mode: graceModeEnum.optional().default("NONE"),
+    scotia_grace_days: z.number().int().min(0).optional(),
     grace_segments: z
       .array(
         z
@@ -238,25 +241,72 @@ export const createLoanPlanInputsSchema = z
       });
     }
 
+    const graceMode = data.grace_mode ?? "NONE";
     const graceSegments = Array.isArray(data.grace_segments) ? data.grace_segments : [];
-    for (let i = 0; i < graceSegments.length; i++) {
-      const g = graceSegments[i];
-      if (g.from_period > totalPeriods || g.to_period > totalPeriods) {
+
+    if (graceMode === "NONE") {
+      // Ignora cualquier estructura de gracia
+    } else if (graceMode === "SCOTIA_DAYS") {
+      if (typeof data.scotia_grace_days !== "number") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["grace_segments", i],
-          message: "El rango de gracia debe estar dentro del total de periodos"
+          path: ["scotia_grace_days"],
+          message: "scotia_grace_days es obligatorio cuando grace_mode es SCOTIA_DAYS"
         });
       }
-      if (i > 0) {
-        const prev = graceSegments[i - 1];
-        if (g.from_period <= prev.to_period) {
+      if (graceSegments.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["grace_segments"],
+          message: "grace_segments no aplica cuando grace_mode es SCOTIA_DAYS"
+        });
+      }
+    } else if (graceMode === "CLASS_PERIODS") {
+      if (typeof data.scotia_grace_days === "number") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["scotia_grace_days"],
+          message: "scotia_grace_days no aplica cuando grace_mode es CLASS_PERIODS"
+        });
+      }
+      if (graceSegments.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["grace_segments"],
+          message: "grace_segments es obligatorio cuando grace_mode es CLASS_PERIODS"
+        });
+      }
+
+      const sortedGrace = [...graceSegments].sort((a, b) => a.from_period - b.from_period);
+      for (let i = 0; i < sortedGrace.length; i++) {
+        const g = sortedGrace[i];
+        if (g.from_period > totalPeriods || g.to_period > totalPeriods) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ["grace_segments", i, "from_period"],
-            message: "Los periodos de gracia no pueden traslaparse (ordénalos por periodo)"
+            path: ["grace_segments", i],
+            message: "El rango de gracia debe estar dentro del total de periodos"
           });
         }
+        if (i > 0) {
+          const prev = sortedGrace[i - 1];
+          if (g.from_period <= prev.to_period) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["grace_segments", i, "from_period"],
+              message: "Los periodos de gracia no pueden traslaparse"
+            });
+          }
+        }
+      }
+
+      const lastGrace = sortedGrace[sortedGrace.length - 1];
+      if (lastGrace && lastGrace.to_period === totalPeriods) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["grace_segments"],
+          message:
+            "El último periodo no puede ser de gracia (debe existir al menos un periodo normal para cerrar el saldo)"
+        });
       }
     }
 
