@@ -204,7 +204,9 @@ const router = Router();
  *                         example: 12.6825
  *                 payment_schedule:
  *                   type: object
- *                   description: Solo se devuelve cuando rate_mode es CONSTANT
+ *                   description: |
+ *                     Para rate_mode CONSTANT: incluye ted/ip/base_payment_amount + rows.
+ *                     Para rate_mode VARIABLE: incluye segments + rows (la cuota se recalcula al inicio de cada segmento).
  *                   properties:
  *                     ted:
  *                       type: number

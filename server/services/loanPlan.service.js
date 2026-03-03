@@ -168,21 +168,17 @@ export function buildLoanPlanRatePreview(inputs) {
     inputs.rate_mode === "CONSTANT" ? (1 + constantTed) ** paymentDays - 1 : null;
 
   const rates = segments.map((s) => {
-    const effectiveInSourcePeriod = toEffectivePeriodicRate({
-      rate_kind: inputs.rate_kind,
-      rate_value: s.rate_value,
-      rate_period: inputs.rate_period,
-      capitalization: inputs.capitalization
-    });
-
-    const effectiveInPaymentPeriod =
+    const tedSegment =
       inputs.rate_mode === "CONSTANT"
-        ? constantIp
-        : convertEffectiveRateToTargetPeriod({
-            effective_rate: effectiveInSourcePeriod,
-            from_period: inputs.rate_period,
-            to_period: basePaymentPeriod
+        ? constantTed
+        : toEffectiveDailyRate({
+            rate_kind: inputs.rate_kind,
+            rate_value: s.rate_value,
+            rate_period: inputs.rate_period,
+            capitalization: inputs.capitalization
           });
+    const ipSegment =
+      inputs.rate_mode === "CONSTANT" ? constantIp : (1 + tedSegment) ** paymentDays - 1;
 
     return {
       from_period: s.from_period,
@@ -194,8 +190,8 @@ export function buildLoanPlanRatePreview(inputs) {
         rate_period: inputs.rate_period,
         ...(inputs.capitalization ? { capitalization: inputs.capitalization } : {})
       },
-      effective_rate_payment_period: roundTo(effectiveInPaymentPeriod, 7),
-      effective_rate_payment_period_percent: percent4(effectiveInPaymentPeriod)
+      effective_rate_payment_period: roundTo(ipSegment, 7),
+      effective_rate_payment_period_percent: percent4(ipSegment)
     };
   });
 
@@ -217,7 +213,17 @@ export function buildLoanPlanRatePreview(inputs) {
             n: totalPeriods
           })
         }
-      : {})
+      : {
+          payment_schedule: buildVariablePaymentSchedule({
+            principal: loanAmount,
+            days_per_period: paymentDays,
+            n: totalPeriods,
+            rate_kind: inputs.rate_kind,
+            rate_period: inputs.rate_period,
+            capitalization: inputs.capitalization,
+            segments
+          })
+        })
   };
 }
 
@@ -258,5 +264,92 @@ export function buildConstantPaymentSchedule({ principal, ted, days_per_period, 
     ip: roundTo(ip, 7),
     base_payment_amount: roundTo(basePayment, 7),
     rows: schedule
+  };
+}
+
+export function buildVariablePaymentSchedule({
+  principal,
+  days_per_period,
+  n,
+  rate_kind,
+  rate_period,
+  capitalization,
+  segments
+}) {
+  let balance = principal;
+  const rows = [];
+  const segmentSummaries = [];
+
+  let currentSegmentIndex = 0;
+  let currentIp = null;
+  let currentTed = null;
+  let currentPayment = null;
+
+  const sortedSegments = [...segments].sort((a, b) => a.from_period - b.from_period);
+
+  for (let k = 1; k <= n; k++) {
+    while (
+      currentSegmentIndex < sortedSegments.length &&
+      k > sortedSegments[currentSegmentIndex].to_period
+    ) {
+      currentSegmentIndex++;
+    }
+
+    const seg = sortedSegments[currentSegmentIndex];
+    if (!seg) {
+      const err = new Error("No hay segmento de tasa para el periodo actual");
+      err.status = 400;
+      throw err;
+    }
+
+    const isSegmentStart = k === seg.from_period;
+    if (isSegmentStart) {
+      currentTed = toEffectiveDailyRate({
+        rate_kind,
+        rate_value: seg.rate_value,
+        rate_period,
+        capitalization
+      });
+      currentIp = (1 + currentTed) ** days_per_period - 1;
+
+      const remaining = n - k + 1;
+      currentPayment = computeBasePayment({ principal: balance, ip: currentIp, n: remaining });
+
+      segmentSummaries.push({
+        from_period: seg.from_period,
+        to_period: seg.to_period,
+        rate_value: roundTo(seg.rate_value, 7),
+        ted: roundTo(currentTed, 7),
+        tep: roundTo(currentIp, 7),
+        payment_amount: roundTo(currentPayment, 7)
+      });
+    }
+
+    const startingBalance = balance;
+    const interest = currentIp * startingBalance;
+    let amortization = currentPayment - interest;
+    let payment = currentPayment;
+
+    if (k === n) {
+      amortization = startingBalance;
+      payment = interest + amortization;
+      balance = 0;
+    } else {
+      balance = balance - amortization;
+    }
+
+    rows.push({
+      period_number: k,
+      starting_balance: roundTo(startingBalance, 7),
+      payment_amount: roundTo(payment, 7),
+      interest_amount: roundTo(interest, 7),
+      amortization_amount: roundTo(amortization, 7),
+      ending_balance: roundTo(balance, 7)
+    });
+  }
+
+  return {
+    segments: segmentSummaries,
+    rows
   };
 }
