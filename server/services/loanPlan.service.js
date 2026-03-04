@@ -302,9 +302,11 @@ function enrichScheduleRowWithCharges({ row, payment_days, chargesConfig }) {
   const startingBalance = Number(row.starting_balance || 0);
 
   const rateForPeriod = (monthlyRate) => (monthlyRate / 30) * payment_days;
+  const desgravamenFactorForPeriod = (monthlyRate) =>
+    (1 + monthlyRate) ** (payment_days / 30) - 1;
 
   const insuranceDesgravamenAmount = chargesConfig.desgravamen.enabled
-    ? startingBalance * rateForPeriod(chargesConfig.desgravamen.monthly_rate)
+    ? startingBalance * desgravamenFactorForPeriod(chargesConfig.desgravamen.monthly_rate)
     : 0;
 
   const insuranceBienAmount = chargesConfig.bien.enabled
@@ -409,14 +411,15 @@ export function buildLoanPlanRatePreview(inputs) {
   const principalAfterGrace =
     graceMode === "SCOTIA_DAYS" && scotiaGraceDays > 0 && tedForScotiaGrace !== null
       ? (() => {
-          const ig = principalBeforeGrace * ((1 + tedForScotiaGrace) ** scotiaGraceDays - 1);
-          const sdg = chargesConfig.desgravamen.enabled
-            ? principalBeforeGrace * (chargesConfig.desgravamen.monthly_rate / 30) * scotiaGraceDays
+           const ig = principalBeforeGrace * ((1 + tedForScotiaGrace) ** scotiaGraceDays - 1);
+           const sdg = chargesConfig.desgravamen.enabled
+            ? principalBeforeGrace *
+              ((1 + chargesConfig.desgravamen.monthly_rate) ** (scotiaGraceDays / 30) - 1)
             : 0;
-          const sbg = chargesConfig.bien.enabled
-            ? chargesConfig.bien.insured_value * (chargesConfig.bien.monthly_rate / 30) * scotiaGraceDays
-            : 0;
-          return principalBeforeGrace + ig + sdg + sbg;
+           const sbg = chargesConfig.bien.enabled
+             ? chargesConfig.bien.insured_value * (chargesConfig.bien.monthly_rate / 30) * scotiaGraceDays
+             : 0;
+           return principalBeforeGrace + ig + sdg + sbg;
         })()
       : principalBeforeGrace;
 
