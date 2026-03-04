@@ -10,6 +10,17 @@ export const periodEnum = z.enum([
   "DAILY"
 ]);
 
+export const objectIdSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-fA-F0-9]{24}$/, { message: "Debe ser un ObjectId válido" });
+
+export const objectIdParamsSchema = z
+  .object({
+    id: objectIdSchema
+  })
+  .strict();
+
 const rateKindEnum = z.enum(["EFFECTIVE", "NOMINAL"]);
 const graceKindEnum = z.enum(["TOTAL", "PARTIAL"]);
 const graceModeEnum = z.enum(["NONE", "SCOTIA_DAYS", "CLASS_PERIODS"]);

@@ -2,24 +2,24 @@ import { Router } from "express";
 import loanPlanController from "../controllers/LoanPlanController.js";
 import { validate } from "../middleware/validate.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { createLoanPlanInputsSchema } from "../schemas/loanPlan.schemas.js";
+import { createLoanPlanInputsSchema, objectIdParamsSchema } from "../schemas/loanPlan.schemas.js";
 
 const router = Router();
 
 /**
  * @openapi
- * /api/loan-plans/payment-schedule/preview:
+ * /api/loan-plans/payment-schedule:
  *   post:
- *     summary: Preview inputs para cronograma de pagos (solo validación + orden)
+ *     summary: Calcular y guardar cronograma de pagos
  *     tags:
  *       - LoanPlans
  *     security:
  *       - bearerAuth: []
  *     description: |
- *       Por ahora no se calcula el cronograma completo ni se persiste en BD.
  *       Se validan todos los inputs y se devuelve:
  *       - Monto del préstamo calculado (precio - bono - cuota inicial)
  *       - Tasas convertidas a TE del periodo de pago (payment_frequency), asumiendo año ordinario
+ *       - Cronograma + indicadores (y se guarda input/output en BD)
  *     requestBody:
  *       required: true
  *       content:
@@ -192,8 +192,8 @@ const router = Router();
  *                       enabled: { type: boolean, example: true }
  *                       rate: { type: number, example: 0.00005 }
  *     responses:
- *       200:
- *         description: Preview de tasas (convertidas al periodo de pago) + monto del préstamo + cronograma (solo CONSTANT)
+ *       201:
+ *         description: Cálculo guardado
  *         content:
  *           application/json:
  *             schema:
@@ -321,10 +321,55 @@ const router = Router();
  *         description: Error de validación
  */
 router.post(
-  "/payment-schedule/preview",
+  "/payment-schedule",
   requireAuth,
   validate({ body: createLoanPlanInputsSchema }),
-  (req, res, next) => loanPlanController.previewPaymentSchedule(req, res, next)
+  (req, res, next) => loanPlanController.calculatePaymentSchedule(req, res, next)
+);
+
+/**
+ * @openapi
+ * /api/loan-plans/simulations:
+ *   get:
+ *     summary: Listar inputs registrados
+ *     tags:
+ *       - LoanPlans
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de inputs
+ */
+router.get("/simulations", requireAuth, (req, res, next) =>
+  loanPlanController.listInputs(req, res, next)
+);
+
+/**
+ * @openapi
+ * /api/loan-plans/simulations/{id}/output:
+ *   get:
+ *     summary: Obtener outputs por input id
+ *     tags:
+ *       - LoanPlans
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Output encontrado
+ *       404:
+ *         description: No encontrado
+ */
+router.get(
+  "/simulations/:id/output",
+  requireAuth,
+  validate({ params: objectIdParamsSchema }),
+  (req, res, next) => loanPlanController.getOutputByInputId(req, res, next)
 );
 
 export default router;

@@ -1,9 +1,34 @@
 import { buildLoanPlanRatePreview } from "../services/loanPlan.service.js";
+import * as loanPlanStorage from "../services/loanPlanStorage.service.js";
 
 class LoanPlanController {
-  async previewPaymentSchedule(req, res, next) {
+  async calculatePaymentSchedule(req, res, next) {
     try {
-      const result = buildLoanPlanRatePreview(req.validated.body);
+      const output = buildLoanPlanRatePreview(req.validated.body);
+      const createdBy = req.auth?.sub;
+      const persisted = await loanPlanStorage.persistLoanPlanCalculation({
+        inputs: req.validated.body,
+        output,
+        createdBy
+      });
+      res.status(201).json({ ...persisted, ...output });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async listInputs(_req, res, next) {
+    try {
+      const result = await loanPlanStorage.listLoanPlanInputs();
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getOutputByInputId(req, res, next) {
+    try {
+      const result = await loanPlanStorage.getLoanPlanOutputByInputId(req.validated.params.id);
       res.json(result);
     } catch (err) {
       next(err);
