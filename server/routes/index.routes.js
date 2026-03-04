@@ -2,7 +2,10 @@ import { Router } from "express";
 import userRoutes from "./user.routes.js";
 import authRoutes from "./auth.routes.js";
 import clientRoutes from "./client.routes.js";
+
 import loanPlanRoutes from "./loanPlan.routes.js";
+
+import housingRoutes from "./housing.routes.js";
 
 const router = Router();
 
@@ -31,5 +34,6 @@ router.use("/users", userRoutes);
 router.use("/auth", authRoutes);
 router.use("/clients", clientRoutes);
 router.use("/loan-plans", loanPlanRoutes);
+router.use("/housing", housingRoutes);
 
 export default router;
