@@ -20,6 +20,7 @@ export async function createClient(userId, data) {
   const created = await Client.create({
     firstName: data.firstName,
     lastName: data.lastName,
+    dni: data.dni,
     age: data.age,
     email: data.email,
     phone: data.phone,
@@ -56,6 +57,7 @@ export async function updateClient(id, userId, data) {
 
   if (data.firstName) client.firstName = data.firstName;
   if (data.lastName) client.lastName = data.lastName;
+  if (data.dni) client.dni = data.dni;
   if (data.age !== undefined) client.age = data.age;
   if (data.email) client.email = data.email;
   if (data.phone) client.phone = data.phone;
