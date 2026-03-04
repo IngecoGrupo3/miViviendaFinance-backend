@@ -346,6 +346,34 @@ router.get("/simulations", requireAuth, (req, res, next) =>
 
 /**
  * @openapi
+ * /api/loan-plans/simulations/{id}:
+ *   get:
+ *     summary: Obtener input por id
+ *     tags:
+ *       - LoanPlans
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Input encontrado
+ *       404:
+ *         description: No encontrado
+ */
+router.get(
+  "/simulations/:id",
+  requireAuth,
+  validate({ params: objectIdParamsSchema }),
+  (req, res, next) => loanPlanController.getInputById(req, res, next)
+);
+
+/**
+ * @openapi
  * /api/loan-plans/simulations/{id}/output:
  *   get:
  *     summary: Obtener outputs por input id

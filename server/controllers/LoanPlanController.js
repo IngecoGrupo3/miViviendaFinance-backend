@@ -34,6 +34,15 @@ class LoanPlanController {
       next(err);
     }
   }
+
+  async getInputById(req, res, next) {
+    try {
+      const result = await loanPlanStorage.getLoanPlanInputById(req.validated.params.id);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
-export default new LoanPlanController();
+export default new LoanPlanController();  
