@@ -14,6 +14,13 @@ const clientSchema = new mongoose.Schema(
             trim: true,
             minlength: 2
         },
+        dni: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true,
+            match: /^[0-9]{8}$/
+        },
         age: {
             type: Number,
             required: true,

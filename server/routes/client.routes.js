@@ -24,6 +24,7 @@ const router = Router();
  *             required:
  *               - firstName
  *               - lastName
+ *               - dni
  *               - age
  *               - email
  *               - phone
@@ -36,28 +37,50 @@ const router = Router();
  *             properties:
  *               firstName:
  *                 type: string
+ *                 example: Juan
  *               lastName:
  *                 type: string
+ *                 example: Pérez
+ *               dni:
+ *                 type: string
+ *                 pattern: '^[0-9]{8}$'
+ *                 example: "12345678"
+ *                 description: DNI de 8 dígitos
  *               age:
  *                 type: integer
+ *                 minimum: 18
+ *                 example: 30
  *               email:
  *                 type: string
+ *                 format: email
+ *                 example: juan.perez@example.com
  *               phone:
  *                 type: string
+ *                 example: "987654321"
  *               maritalStatus:
  *                 type: string
  *                 enum: [soltero, casado, divorciado, viudo, conviviente]
+ *                 example: soltero
  *               monthlyIncome:
  *                 type: number
+ *                 minimum: 0
+ *                 example: 3500
  *               incomeType:
  *                 type: string
  *                 enum: [dependiente, independiente, mixto]
+ *                 example: dependiente
  *               dependentsCount:
  *                 type: integer
+ *                 minimum: 0
+ *                 example: 0
  *               employmentTenureMonths:
  *                 type: integer
+ *                 minimum: 0
+ *                 example: 24
  *               employmentStatus:
  *                 type: string
+ *                 minLength: 2
+ *                 example: Empleado a tiempo completo
  *     responses:
  *       201:
  *         description: Cliente creado 
@@ -128,28 +151,44 @@ router.get("/:id", requireAuth, (req, res, next) => clientController.getById(req
  *             properties:
  *               firstName:
  *                 type: string
+ *                 example: Juan
  *               lastName:
  *                 type: string
+ *                 example: Pérez
+ *               dni:
+ *                 type: string
+ *                 pattern: '^[0-9]{8}$'
+ *                 example: "12345678"
  *               age:
  *                 type: integer
+ *                 minimum: 18
+ *                 example: 30
  *               email:
  *                 type: string
+ *                 example: juan.perez@example.com
  *               phone:
  *                 type: string
+ *                 example: "987654321"
  *               maritalStatus:
  *                 type: string
  *                 enum: [soltero, casado, divorciado, viudo, conviviente]
+ *                 example: soltero
  *               monthlyIncome:
  *                 type: number
+ *                 example: 3500
  *               incomeType:
  *                 type: string
  *                 enum: [dependiente, independiente, mixto]
+ *                 example: dependiente
  *               dependentsCount:
  *                 type: integer
+ *                 example: 0
  *               employmentTenureMonths:
  *                 type: integer
+ *                 example: 24
  *               employmentStatus:
  *                 type: string
+ *                 example: Empleado
  *     responses:
  *       200:
  *         description: Cliente actualizado

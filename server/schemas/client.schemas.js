@@ -3,6 +3,7 @@ import { z } from "zod";
 export const createClientSchema = z.object({
     firstName: z.string().trim().min(2),
     lastName: z.string().trim().min(2),
+    dni: z.string().trim().regex(/^[0-9]{8}$/, { message: "DNI debe tener 8 dígitos" }),
     age: z.number().int().min(18, { message: "El cliente debe ser mayor de edad" }),
     email: z.string().trim().email(),
     phone: z.string().trim().min(6),
