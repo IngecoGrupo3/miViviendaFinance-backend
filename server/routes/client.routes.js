@@ -246,6 +246,10 @@ router.delete("/:id", requireAuth, (req, res, next) => clientController.remove(r
  *       404:
  *         description: Cliente o vivienda no encontrados
  */
-router.post("/:id/assign-housing/:housingId", requireAuth, (req, res, next) => clientController.assignHousing(req, res, next));
+router.post('/:id/assign-housing/:housingId', async (req, res) => {
+  const { id, housingId } = req.params; // Extraer los parámetros de la URL
+  const result = await clientController.assignHousing(id, housingId);
+  res.json(result);
+});
 
 export default router;

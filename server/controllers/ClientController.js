@@ -1,4 +1,5 @@
 import * as clientService from "../services/client.service.js";
+import Client from '../models/Client.js';
 
 class ClientController {
   async create(req, res, next) {
@@ -63,15 +64,18 @@ class ClientController {
     }
   }
 
-  async assignHousing(req, res, next) {
-    try {
-      const userId = req.auth.sub;
-      const { id: clientId, housingId } = req.params;
-      const result = await clientService.assignHousing(clientId, userId, housingId);
-      res.json(result);
-    } catch (err) {
-      next(err);
+  async assignHousing(clientId, housingId) {
+    const client = await Client.findByIdAndUpdate(
+      clientId,
+      { assignedHousingId: housingId },
+      { new: true } // Devuelve el documento actualizado
+    );
+  
+    if (!client) {
+      throw new Error("Cliente no encontrado");
     }
+
+    return client;
   }
 }
 
