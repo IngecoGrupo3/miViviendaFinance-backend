@@ -8,6 +8,8 @@ const PERIOD_DAYS_ORDINARY_YEAR = {
   DAILY: 1
 };
 
+// ACA ESTAN LOS CALCULOS DE TASA PERIÓDICA, CONVERSIÓN DE TASA, ETC
+
 function roundTo(value, decimals) {
   const factor = 10 ** decimals;
   return Math.round((value + Number.EPSILON) * factor) / factor;
@@ -85,6 +87,8 @@ function toEffectiveDailyRate({ rate_kind, rate_value, rate_period, capitalizati
   return ted;
 }
 
+
+// ACA ESTA LA PARTE DE CÁLCULO DE CUOTA BASE
 function computeBasePayment({ principal, ip, n }) {
   if (n <= 0 || !Number.isInteger(n)) {
     const err = new Error("Número total de cuotas inválido");
@@ -158,22 +162,37 @@ function computeNPV(cashflows, rate) {
   return sum;
 }
 
-function computeIRR(cashflows, { tol = 1e-10, maxIter = 200 } = {}) {
+function computeIRR(cashflows, { tol = 1e-10, rateTol = 1e-12, maxIter = 200 } = {}) {
   const hasPos = cashflows.some((x) => x > 0);
   const hasNeg = cashflows.some((x) => x < 0);
   if (!hasPos || !hasNeg) return null;
 
   const npv = (r) => {
-    let s = 0;
+    if (!Number.isFinite(r) || r <= -1) return NaN;
+    const df = 1 / (1 + r);
+    if (!Number.isFinite(df)) return NaN;
+
+    let sum = 0;
+    let dfPow = 1;
     for (let t = 0; t < cashflows.length; t++) {
-      s += cashflows[t] / (1 + r) ** t;
+      const term = cashflows[t] * dfPow;
+      sum += term;
+      dfPow *= df;
+      if (!Number.isFinite(sum) || !Number.isFinite(dfPow)) return NaN;
+      if (dfPow === 0) break;
     }
-    return s;
+    return sum;
   };
 
-  let low = -0.999999;
-  let high = 10;
+  const lowCandidates = [-0.999999, -0.99, -0.9, -0.75, -0.5, -0.25, -0.1, 0];
+  let low = lowCandidates[0];
   let fLow = npv(low);
+  for (let i = 0; i < lowCandidates.length && !Number.isFinite(fLow); i++) {
+    low = lowCandidates[i];
+    fLow = npv(low);
+  }
+
+  let high = 10;
   let fHigh = npv(high);
 
   let expand = 0;
@@ -189,8 +208,14 @@ function computeIRR(cashflows, { tol = 1e-10, maxIter = 200 } = {}) {
   for (let i = 0; i < maxIter; i++) {
     const mid = (low + high) / 2;
     const fMid = npv(mid);
-    if (!Number.isFinite(fMid)) return null;
+    if (!Number.isFinite(fMid)) {
+      low = mid;
+      fLow = npv(low);
+      continue;
+    }
+
     if (Math.abs(fMid) <= tol) return mid;
+    if (high - low <= rateTol) return mid;
 
     if (fLow * fMid > 0) {
       low = mid;
@@ -201,7 +226,7 @@ function computeIRR(cashflows, { tol = 1e-10, maxIter = 200 } = {}) {
     }
   }
 
-  return null;
+  return (low + high) / 2;
 }
 
 function computeIndicators({ loan_amount, payment_days, rows, discount_rate_tea }) {
