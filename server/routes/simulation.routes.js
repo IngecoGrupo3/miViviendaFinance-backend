@@ -1,5 +1,6 @@
 import { Router } from "express";
 import simulationController from "../controllers/SimulationController.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 import { validate } from "../middleware/validate.js";
 import { objectIdParamsSchema } from "../schemas/loanPlan.schemas.js";
 
@@ -12,6 +13,8 @@ const router = Router();
  *     summary: Obtener clientId y housingId por simulation id
  *     tags:
  *       - Simulations
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -41,6 +44,7 @@ const router = Router();
  */
 router.get(
   "/:id",
+  requireAuth,
   validate({ params: objectIdParamsSchema }),
   (req, res, next) => simulationController.getIdsById(req, res, next)
 );

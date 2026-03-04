@@ -4,13 +4,7 @@ import Simulation from "../models/Simulation.js";
 
 function ensureClientAccess(client, userId) {
   if (!client) {
-    const err = new Error("Cliente no encontrado o no pertenece a este usuario");
-    err.status = 404;
-    throw err;
-  }
-
-  if (client.createdBy && client.createdBy.toString() !== userId) {
-    const err = new Error("Cliente no encontrado o no pertenece a este usuario");
+    const err = new Error("Cliente no encontrado");
     err.status = 404;
     throw err;
   }
@@ -87,6 +81,8 @@ export async function assignHousing(clientId, userId, housingId) {
     err.status = 404;
     throw err;
   }
+
+  await Client.findByIdAndUpdate(clientId, { assignedHousingId: housingId });
 
   const created = await Simulation.create({
     clientId,

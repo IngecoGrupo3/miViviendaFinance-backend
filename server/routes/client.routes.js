@@ -1,7 +1,7 @@
 import { Router } from "express";
 import clientController from "../controllers/ClientController.js";
 import { validate } from "../middleware/validate.js";
-import { createClientSchema, updateClientSchema } from "../schemas/client.schemas.js";
+import { assignHousingParamsSchema, createClientSchema, updateClientSchema } from "../schemas/client.schemas.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
@@ -40,12 +40,12 @@ const router = Router();
  *                 example: Juan
  *               lastName:
  *                 type: string
- *                 example: Pérez
+ *                 example: PÃ©rez
  *               dni:
  *                 type: string
  *                 pattern: '^[0-9]{8}$'
  *                 example: "12345678"
- *                 description: DNI de 8 dígitos
+ *                 description: DNI de 8 dÃ­gitos
  *               age:
  *                 type: integer
  *                 minimum: 18
@@ -85,9 +85,11 @@ const router = Router();
  *       201:
  *         description: Cliente creado 
  *       400:
- *         description: Error de validación
+ *         description: Error de validaciÃ³n
  */
-router.post("/", requireAuth, validate({ body: createClientSchema }), (req, res, next) => clientController.create(req, res, next));
+router.post("/", requireAuth, validate({ body: createClientSchema }), (req, res, next) =>
+  clientController.create(req, res, next)
+);
 
 /**
  * @openapi
@@ -154,7 +156,7 @@ router.get("/:id", requireAuth, (req, res, next) => clientController.getById(req
  *                 example: Juan
  *               lastName:
  *                 type: string
- *                 example: Pérez
+ *                 example: PÃ©rez
  *               dni:
  *                 type: string
  *                 pattern: '^[0-9]{8}$'
@@ -195,7 +197,9 @@ router.get("/:id", requireAuth, (req, res, next) => clientController.getById(req
  *       404:
  *         description: Cliente no encontrado
  */
-router.put("/:id", requireAuth, validate({ body: updateClientSchema }), (req, res, next) => clientController.update(req, res, next));
+router.put("/:id", requireAuth, validate({ body: updateClientSchema }), (req, res, next) =>
+  clientController.update(req, res, next)
+);
 
 /**
  * @openapi
@@ -224,7 +228,7 @@ router.delete("/:id", requireAuth, (req, res, next) => clientController.remove(r
  * @openapi
  * /api/clients/{id}/assign-housing/{housingId}:
  *   post:
- *     summary: Crear simulación (cliente + vivienda)
+ *     summary: Crear simulaciÃ³n (cliente + vivienda)
  *     tags:
  *       - Clients
  *     security:
@@ -242,14 +246,16 @@ router.delete("/:id", requireAuth, (req, res, next) => clientController.remove(r
  *           type: string
  *     responses:
  *       200:
- *         description: Simulación creada exitosamente
+ *         description: SimulaciÃ³n creada exitosamente
  *       404:
  *         description: Cliente o vivienda no encontrados
  */
-router.post('/:id/assign-housing/:housingId', async (req, res) => {
-  const { id, housingId } = req.params; // Extraer los parámetros de la URL
-  const result = await clientController.assignHousing(id, housingId);
-  res.json(result);
-});
+router.post(
+  "/:id/assign-housing/:housingId",
+  requireAuth,
+  validate({ params: assignHousingParamsSchema }),
+  (req, res, next) => clientController.assignHousing(req, res, next)
+);
 
 export default router;
+
