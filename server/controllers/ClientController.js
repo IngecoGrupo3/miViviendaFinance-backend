@@ -3,16 +3,32 @@ import * as clientService from "../services/client.service.js";
 class ClientController {
   async create(req, res, next) {
     try {
-      const result = await clientService.createClient(req.validated.body);
+      const userId = req.auth.sub; // from requireAuth middleware payload
+      const result = await clientService.createClient(userId, req.validated.body);
       res.status(201).json(result);
     } catch (err) {
+      if (err.code === 11000) {
+        err.status = 400;
+        err.message = "El DNI o Correo ya está registrado";
+      }
       next(err);
     }
   }
 
   async list(req, res, next) {
     try {
-      const result = await clientService.listClients();
+      const userId = req.auth.sub;
+      const result = await clientService.listClients(userId);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getById(req, res, next) {
+    try {
+      const userId = req.auth.sub;
+      const result = await clientService.getClientById(req.params.id, userId);
       res.json(result);
     } catch (err) {
       next(err);
@@ -21,19 +37,37 @@ class ClientController {
 
   async update(req, res, next) {
     try {
+      const userId = req.auth.sub;
       const result = await clientService.updateClient(
         req.params.id,
+        userId,
         req.validated.body
       );
       res.json(result);
     } catch (err) {
+      if (err.code === 11000) {
+        err.status = 400;
+        err.message = "El DNI o Correo ya está registrado";
+      }
       next(err);
     }
   }
 
   async remove(req, res, next) {
     try {
-      const result = await clientService.deleteClient(req.params.id);
+      const userId = req.auth.sub;
+      const result = await clientService.deleteClient(req.params.id, userId);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async assignHousing(req, res, next) {
+    try {
+      const userId = req.auth.sub;
+      const { id: clientId, housingId } = req.params;
+      const result = await clientService.assignHousing(clientId, userId, housingId);
       res.json(result);
     } catch (err) {
       next(err);

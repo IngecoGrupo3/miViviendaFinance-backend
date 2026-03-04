@@ -1,105 +1,82 @@
 import Client from "../models/Client.js";
 
-export async function createClient(data) {
+export async function createClient(userId, data) {
   const created = await Client.create({
-    firstName: data.first_name,
-    lastName: data.last_name,
-    age: data.age,
-    email: data.email,
-    phone: data.phone,
-    maritalStatus: data.marital_status,
-    monthlyIncome: data.monthly_income,
-    incomeType: data.income_type,
-    dependentsCount: data.dependents_count,
-    employmentTenureMonths: data.employment_tenure_months,
-    employmentStatus: data.employment_status
+    nombres: data.nombres,
+    apellidos: data.apellidos,
+    edad: data.edad,
+    dni: data.dni,
+    correo: data.correo,
+    telefono: data.telefono,
+    estadoCivil: data.estadoCivil,
+    ingresosMensuales: data.ingresosMensuales,
+    tipoIngreso: data.tipoIngreso,
+    dependientes: data.dependientes,
+    antiguedadLaboral: data.antiguedadLaboral,
+    situacionLaboral: data.situacionLaboral,
+    userId: userId
   });
-  
-  return {
-    id: created._id.toString(),
-    first_name: created.firstName,
-    last_name: created.lastName,
-    age: created.age,
-    email: created.email,
-    phone: created.phone ?? null,
-    marital_status: created.maritalStatus,
-    monthly_income: created.monthlyIncome,
-    income_type: created.incomeType,
-    dependents_count: created.dependentsCount,
-    employment_tenure_months: created.employmentTenureMonths,
-    employment_status: created.employmentStatus,
-    created_at: created.createdAt,
-    updated_at: created.updatedAt
-  };
+
+  return created;
 }
 
-export async function listClients() {
-  const clients = await Client.find().sort({ createdAt: -1 }).lean();
-  
-  return clients.map((c) => ({
-    id: c._id.toString(),
-    first_name: c.firstName,
-    last_name: c.lastName,
-    age: c.age,
-    email: c.email,
-    phone: c.phone ?? null,
-    marital_status: c.maritalStatus,
-    monthly_income: c.monthlyIncome,
-    income_type: c.incomeType,
-    dependents_count: c.dependentsCount,
-    employment_tenure_months: c.employmentTenureMonths,
-    employment_status: c.employmentStatus,
-    created_at: c.createdAt,
-    updated_at: c.updatedAt
-  }));
+export async function listClients(userId) {
+  return await Client.find({ userId }).sort({ createdAt: -1 }).lean();
 }
 
-export async function updateClient(id, data) {
-  const client = await Client.findById(id);
+export async function getClientById(id, userId) {
+  const client = await Client.findOne({ _id: id, userId }).lean();
   if (!client) {
-    const err = new Error("Cliente no encontrado");
+    const err = new Error("Cliente no encontrado o no pertenece a este usuario");
+    err.status = 404;
+    throw err;
+  }
+  return client;
+}
+
+export async function updateClient(id, userId, data) {
+  const client = await Client.findOne({ _id: id, userId });
+  if (!client) {
+    const err = new Error("Cliente no encontrado o no pertenece a este usuario");
     err.status = 404;
     throw err;
   }
 
-  if (data.first_name) client.firstName = data.first_name;
-  if (data.last_name) client.lastName = data.last_name;
-  if (data.age) client.age = data.age;
-  if (data.email) client.email = data.email;
-  if (data.phone) client.phone = data.phone;
-  if (data.marital_status) client.maritalStatus = data.marital_status;
-  if (data.monthly_income) client.monthlyIncome = data.monthly_income;
-  if (data.income_type) client.incomeType = data.income_type;
-  if (data.dependents_count !== undefined) client.dependentsCount = data.dependents_count;
-  if (data.employment_tenure_months) client.employmentTenureMonths = data.employment_tenure_months;
-  if (data.employment_status) client.employmentStatus = data.employment_status;
+  if (data.nombres) client.nombres = data.nombres;
+  if (data.apellidos) client.apellidos = data.apellidos;
+  if (data.edad) client.edad = data.edad;
+  if (data.dni) client.dni = data.dni;
+  if (data.correo) client.correo = data.correo;
+  if (data.telefono) client.telefono = data.telefono;
+  if (data.estadoCivil) client.estadoCivil = data.estadoCivil;
+  if (data.ingresosMensuales) client.ingresosMensuales = data.ingresosMensuales;
+  if (data.tipoIngreso) client.tipoIngreso = data.tipoIngreso;
+  if (data.dependientes !== undefined) client.dependientes = data.dependientes;
+  if (data.antiguedadLaboral !== undefined) client.antiguedadLaboral = data.antiguedadLaboral;
+  if (data.situacionLaboral) client.situacionLaboral = data.situacionLaboral;
 
   await client.save();
-
-  return {
-    id: client._id.toString(),
-    first_name: client.firstName,
-    last_name: client.lastName,
-    age: client.age,
-    email: client.email,
-    phone: client.phone ?? null,
-    marital_status: client.maritalStatus,
-    monthly_income: client.monthlyIncome,
-    income_type: client.incomeType,
-    dependents_count: client.dependentsCount,
-    employment_tenure_months: client.employmentTenureMonths,
-    employment_status: client.employmentStatus,
-    created_at: client.createdAt,
-    updated_at: client.updatedAt
-  };
+  return client;
 }
 
-export async function deleteClient(id) {
-  const client = await Client.findByIdAndDelete(id);
+export async function deleteClient(id, userId) {
+  const client = await Client.findOneAndDelete({ _id: id, userId });
   if (!client) {
-    const err = new Error("Cliente no encontrado");
+    const err = new Error("Cliente no encontrado o no pertenece a este usuario");
     err.status = 404;
     throw err;
   }
   return { message: "Cliente eliminado correctamente" };
+}
+
+export async function assignHousing(clientId, userId, housingId) {
+  const client = await Client.findOne({ _id: clientId, userId });
+  if (!client) {
+    const err = new Error("Cliente no encontrado o no pertenece a este usuario");
+    err.status = 404;
+    throw err;
+  }
+  client.assignedHousingId = housingId;
+  await client.save();
+  return client;
 }
