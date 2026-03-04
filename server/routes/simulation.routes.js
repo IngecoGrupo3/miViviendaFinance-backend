@@ -10,7 +10,7 @@ const router = Router();
  * @openapi
  * /api/simulations/{id}:
  *   get:
- *     summary: Obtener clientId y housingId por simulation id
+ *     summary: Obtener datos de simulación por id
  *     tags:
  *       - Simulations
  *     security:
@@ -24,7 +24,7 @@ const router = Router();
  *           example: "69a7b80d4f983d53f47232c2"
  *     responses:
  *       200:
- *         description: IDs encontrados
+ *         description: Datos encontrados
  *         content:
  *           application/json:
  *             schema:
@@ -39,6 +39,18 @@ const router = Router();
  *                 housingId:
  *                   type: string
  *                   example: "69a7b7fa4f983d53f47232ba"
+ *                 client_firstName:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "Juan"
+ *                 client_lastName:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "Pérez"
+ *                 housing_code:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "HOU-001"
  *       404:
  *         description: No encontrado
  */

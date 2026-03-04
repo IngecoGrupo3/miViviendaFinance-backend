@@ -99,6 +99,18 @@ router.get(
  *       - Housing
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la vivienda
+ *     responses:
+ *       200:
+ *         description: Vivienda encontrada
+ *       404:
+ *         description: Vivienda no encontrada
  */
 router.get(
   "/:id",
