@@ -18,8 +18,8 @@ class ClientController {
 
   async list(req, res, next) {
     try {
-      const userId = req.auth.sub;
-      const result = await clientService.listClients(userId);
+      //const userId = req.auth.sub;
+      const result = await clientService.listClients();
       res.json(result);
     } catch (err) {
       next(err);
@@ -28,8 +28,8 @@ class ClientController {
 
   async getById(req, res, next) {
     try {
-      const userId = req.auth.sub;
-      const result = await clientService.getClientById(req.params.id, userId);
+      //const userId = req.auth.sub;
+      const result = await clientService.getClientById(req.params.id);
       res.json(result);
     } catch (err) {
       next(err);

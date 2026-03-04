@@ -28,9 +28,8 @@ export async function createHousing(data, userId) {
 /**
  * LIST
  */
-export async function listHousing(userId) {
-  // Filtrar solo las viviendas del usuario autenticado
-  return await Housing.find({ createdBy: userId }).sort({ createdAt: -1 });
+export async function listHousing() {
+  return await Housing.find({}).sort({ createdAt: -1 });
 }
 
 /**

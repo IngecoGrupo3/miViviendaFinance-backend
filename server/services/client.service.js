@@ -36,10 +36,8 @@ export async function createClient(userId, data) {
   return created;
 }
 
-export async function listClients(userId) {
-  return await Client.find({
-    $or: [{ createdBy: userId }, { createdBy: { $exists: false } }]
-  })
+export async function listClients() {
+  return await Client.find({})
     .sort({ createdAt: -1 })
     .lean();
 }

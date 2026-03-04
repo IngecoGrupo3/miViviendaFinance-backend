@@ -13,8 +13,8 @@ class HousingController {
 
   async list(req, res, next) {
     try {
-      const userId = req.auth.sub; // Obtener userId del token
-      const result = await housingService.listHousing(userId);
+      //const userId = req.auth.sub; // Obtener userId del token
+      const result = await housingService.listHousing();
       res.json(result);
     } catch (err) {
       next(err);
