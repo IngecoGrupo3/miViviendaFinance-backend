@@ -1,10 +1,19 @@
 import swaggerJsdoc from "swagger-jsdoc";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const swaggerServerUrl =
     process.env.SWAGGER_SERVER_URL ||
     process.env.API_BASE_URL ||
     `http://localhost:${PORT}`;
+
+const swaggerRoutesGlob = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "routes",
+    "*.js"
+);
 
 const options = {
     definition: {
@@ -29,7 +38,7 @@ const options = {
             }
         }
     },
-    apis: ["./server/routes/*.js"]
+    apis: [swaggerRoutesGlob]
 };
 
 const swaggerSpec = swaggerJsdoc(options);

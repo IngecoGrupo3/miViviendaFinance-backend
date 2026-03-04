@@ -22,46 +22,42 @@ const router = Router();
  *           schema:
  *             type: object
  *             required:
- *               - nombres
- *               - apellidos
- *               - edad
- *               - dni
- *               - correo
- *               - telefono
- *               - estadoCivil
- *               - ingresosMensuales
- *               - tipoIngreso
- *               - dependientes
- *               - antiguedadLaboral
- *               - situacionLaboral
+ *               - firstName
+ *               - lastName
+ *               - age
+ *               - email
+ *               - phone
+ *               - maritalStatus
+ *               - monthlyIncome
+ *               - incomeType
+ *               - dependentsCount
+ *               - employmentTenureMonths
+ *               - employmentStatus
  *             properties:
- *               nombres:
+ *               firstName:
  *                 type: string
- *               apellidos:
+ *               lastName:
  *                 type: string
- *               edad:
+ *               age:
  *                 type: integer
- *               dni:
+ *               email:
  *                 type: string
- *               correo:
+ *               phone:
  *                 type: string
- *               telefono:
- *                 type: string
- *               estadoCivil:
+ *               maritalStatus:
  *                 type: string
  *                 enum: [soltero, casado, divorciado, viudo, conviviente]
- *               ingresosMensuales:
+ *               monthlyIncome:
  *                 type: number
- *               tipoIngreso:
+ *               incomeType:
  *                 type: string
  *                 enum: [dependiente, independiente, mixto]
- *               dependientes:
+ *               dependentsCount:
  *                 type: integer
- *               antiguedadLaboral:
+ *               employmentTenureMonths:
  *                 type: integer
- *               situacionLaboral:
+ *               employmentStatus:
  *                 type: string
- *                 enum: [estable, contrato, independiente, otro]
  *     responses:
  *       201:
  *         description: Cliente creado 
@@ -130,33 +126,30 @@ router.get("/:id", requireAuth, (req, res, next) => clientController.getById(req
  *           schema:
  *             type: object
  *             properties:
- *               nombres:
+ *               firstName:
  *                 type: string
- *               apellidos:
+ *               lastName:
  *                 type: string
- *               edad:
+ *               age:
  *                 type: integer
- *               dni:
+ *               email:
  *                 type: string
- *               correo:
+ *               phone:
  *                 type: string
- *               telefono:
- *                 type: string
- *               estadoCivil:
+ *               maritalStatus:
  *                 type: string
  *                 enum: [soltero, casado, divorciado, viudo, conviviente]
- *               ingresosMensuales:
+ *               monthlyIncome:
  *                 type: number
- *               tipoIngreso:
+ *               incomeType:
  *                 type: string
  *                 enum: [dependiente, independiente, mixto]
- *               dependientes:
+ *               dependentsCount:
  *                 type: integer
- *               antiguedadLaboral:
+ *               employmentTenureMonths:
  *                 type: integer
- *               situacionLaboral:
+ *               employmentStatus:
  *                 type: string
- *                 enum: [estable, contrato, independiente, otro]
  *     responses:
  *       200:
  *         description: Cliente actualizado
@@ -192,7 +185,7 @@ router.delete("/:id", requireAuth, (req, res, next) => clientController.remove(r
  * @openapi
  * /api/clients/{id}/assign-housing/{housingId}:
  *   post:
- *     summary: Asignar vivienda a un cliente
+ *     summary: Crear simulación (cliente + vivienda)
  *     tags:
  *       - Clients
  *     security:
@@ -210,7 +203,7 @@ router.delete("/:id", requireAuth, (req, res, next) => clientController.remove(r
  *           type: string
  *     responses:
  *       200:
- *         description: Vivienda asignada exitosamente
+ *         description: Simulación creada exitosamente
  *       404:
  *         description: Cliente o vivienda no encontrados
  */

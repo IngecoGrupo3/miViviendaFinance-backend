@@ -2,30 +2,24 @@ import mongoose from "mongoose";
 
 const clientSchema = new mongoose.Schema(
     {
-        nombres: {
+        firstName: {
             type: String,
             required: true,
             trim: true,
             minlength: 2
         },
-        apellidos: {
+        lastName: {
             type: String,
             required: true,
             trim: true,
             minlength: 2
         },
-        edad: {
+        age: {
             type: Number,
             required: true,
             min: 18
         },
-        dni: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true
-        },
-        correo: {
+        email: {
             type: String,
             required: true,
             trim: true,
@@ -33,51 +27,52 @@ const clientSchema = new mongoose.Schema(
             unique: true,
             match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         },
-        telefono: {
+        phone: {
             type: String,
             required: true,
             trim: true
         },
-        estadoCivil: {
+        maritalStatus: {
             type: String,
             required: true,
             enum: ["soltero", "casado", "divorciado", "viudo", "conviviente"]
         },
-        ingresosMensuales: {
+        monthlyIncome: {
             type: Number,
             required: true,
             min: 0
         },
-        tipoIngreso: {
+        incomeType: {
             type: String,
             required: true,
             enum: ["dependiente", "independiente", "mixto"]
         },
-        dependientes: {
+        dependentsCount: {
             type: Number,
             required: true,
             min: 0,
             default: 0
         },
-        antiguedadLaboral: {
+        employmentTenureMonths: {
             type: Number,
             required: true,
             min: 0
         },
-        situacionLaboral: {
+        employmentStatus: {
             type: String,
             required: true,
-            enum: ["estable", "contrato", "independiente", "otro"]
-        },
-        userId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true
+            trim: true,
+            minlength: 2
         },
         assignedHousingId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Housing",
             default: null
+        },
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: false
         }
     },
     {

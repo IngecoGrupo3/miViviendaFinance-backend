@@ -18,6 +18,46 @@ const router = Router();
  *       - Housing
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - area
+ *               - bedrooms
+ *               - bathrooms
+ *               - parkingSpaces
+ *               - floors
+ *               - priceInSoles
+ *               - priceInDollars
+ *               - description
+ *               - realEstateProject
+ *               - propertyType
+ *               - department
+ *               - province
+ *               - district
+ *               - address
+ *               - imageUrl
+ *             properties:
+ *               area: { type: number }
+ *               bedrooms: { type: integer }
+ *               bathrooms: { type: integer }
+ *               parkingSpaces: { type: integer }
+ *               floors: { type: integer }
+ *               priceInSoles: { type: number }
+ *               priceInDollars: { type: number }
+ *               description: { type: string }
+ *               realEstateProject: { type: string }
+ *               propertyType:
+ *                 type: string
+ *                 enum: [Departamento, Casa, Dúplex, Minidepartamento]
+ *               department: { type: string }
+ *               province: { type: string }
+ *               district: { type: string }
+ *               address: { type: string }
+ *               imageUrl: { type: string, format: uri }
  *     responses:
  *       201:
  *         description: Vivienda creada correctamente
@@ -75,6 +115,39 @@ router.get(
  *       - Housing
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               area: { type: number }
+ *               bedrooms: { type: integer }
+ *               bathrooms: { type: integer }
+ *               parkingSpaces: { type: integer }
+ *               floors: { type: integer }
+ *               priceInSoles: { type: number }
+ *               priceInDollars: { type: number }
+ *               description: { type: string }
+ *               realEstateProject: { type: string }
+ *               propertyType:
+ *                 type: string
+ *                 enum: [Departamento, Casa, Dúplex, Minidepartamento]
+ *               department: { type: string }
+ *               province: { type: string }
+ *               district: { type: string }
+ *               address: { type: string }
+ *               imageUrl: { type: string, format: uri }
+ *               status:
+ *                 type: string
+ *                 enum: [Disponible, Reservado, Vendido]
  */
 router.put(
   "/:id",

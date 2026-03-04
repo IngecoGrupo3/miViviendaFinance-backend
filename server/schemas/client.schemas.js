@@ -1,18 +1,19 @@
 import { z } from "zod";
 
 export const createClientSchema = z.object({
-    nombres: z.string().trim().min(2),
-    apellidos: z.string().trim().min(2),
-    edad: z.number().int().min(18, { message: "El cliente debe ser mayor de edad" }),
-    dni: z.string().trim().min(8),
-    correo: z.string().trim().email(),
-    telefono: z.string().trim(),
-    estadoCivil: z.enum(["soltero", "casado", "divorciado", "viudo", "conviviente"], { message: "Estado civil inválido" }),
-    ingresosMensuales: z.number().min(0),
-    tipoIngreso: z.enum(["dependiente", "independiente", "mixto"], { message: "Tipo de ingreso inválido" }),
-    dependientes: z.number().int().min(0).default(0),
-    antiguedadLaboral: z.number().int().min(0),
-    situacionLaboral: z.enum(["estable", "contrato", "independiente", "otro"], { message: "Estado laboral inválido" })
+    firstName: z.string().trim().min(2),
+    lastName: z.string().trim().min(2),
+    age: z.number().int().min(18, { message: "El cliente debe ser mayor de edad" }),
+    email: z.string().trim().email(),
+    phone: z.string().trim().min(6),
+    maritalStatus: z.enum(["soltero", "casado", "divorciado", "viudo", "conviviente"], {
+        message: "Estado civil inválido"
+    }),
+    monthlyIncome: z.number().min(0),
+    incomeType: z.enum(["dependiente", "independiente", "mixto"], { message: "Tipo de ingreso inválido" }),
+    dependentsCount: z.number().int().min(0).default(0),
+    employmentTenureMonths: z.number().int().min(0),
+    employmentStatus: z.string().trim().min(2)
 }).strict();
 
 export const updateClientSchema = createClientSchema.partial();
