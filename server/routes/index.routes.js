@@ -2,6 +2,7 @@ import { Router } from "express";
 import userRoutes from "./user.routes.js";
 import authRoutes from "./auth.routes.js";
 import clientRoutes from "./client.routes.js";
+import simulationRoutes from "./simulation.routes.js";
 
 import loanPlanRoutes from "./loanPlan.routes.js";
 
@@ -33,6 +34,7 @@ router.get("/health", (_req, res) => res.json({ status: "ok" }));
 router.use("/users", userRoutes);
 router.use("/auth", authRoutes);
 router.use("/clients", clientRoutes);
+router.use("/simulations", simulationRoutes);
 router.use("/loan-plans", loanPlanRoutes);
 router.use("/housing", housingRoutes);
 
