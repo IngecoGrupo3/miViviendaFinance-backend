@@ -22,65 +22,59 @@ const router = Router();
  *           schema:
  *             type: object
  *             required:
- *               - first_name
- *               - last_name
- *               - age
- *               - email
- *               - marital_status
- *               - monthly_income
- *               - income_type
- *               - dependents_count
- *               - employment_tenure_months
- *               - employment_status
+ *               - nombres
+ *               - apellidos
+ *               - edad
+ *               - dni
+ *               - correo
+ *               - telefono
+ *               - estadoCivil
+ *               - ingresosMensuales
+ *               - tipoIngreso
+ *               - dependientes
+ *               - antiguedadLaboral
+ *               - situacionLaboral
  *             properties:
- *               first_name:
+ *               nombres:
  *                 type: string
- *                 example: Juan
- *               last_name:
+ *               apellidos:
  *                 type: string
- *                 example: Perez
- *               age:
+ *               edad:
  *                 type: integer
- *                 example: 30
- *               email:
+ *               dni:
  *                 type: string
- *                 format: email
- *                 example: juan@gmail.com
- *               phone:
+ *               correo:
  *                 type: string
- *                 example: "+51987654321"
- *               marital_status:
+ *               telefono:
+ *                 type: string
+ *               estadoCivil:
  *                 type: string
  *                 enum: [soltero, casado, divorciado, viudo, conviviente]
- *               monthly_income:
+ *               ingresosMensuales:
  *                 type: number
- *                 example: 5000
- *               income_type:
+ *               tipoIngreso:
  *                 type: string
  *                 enum: [dependiente, independiente, mixto]
- *               dependents_count:
+ *               dependientes:
  *                 type: integer
- *                 example: 0
- *               employment_tenure_months:
+ *               antiguedadLaboral:
  *                 type: integer
- *                 example: 24
- *               employment_status:
+ *               situacionLaboral:
  *                 type: string
- *                 enum: [activo, desempleado, jubilado, independiente]
+ *                 enum: [estable, contrato, independiente, otro]
  *     responses:
  *       201:
  *         description: Cliente creado 
  *       400:
  *         description: Error de validación
  */
-
 router.post("/", requireAuth, validate({ body: createClientSchema }), (req, res, next) => clientController.create(req, res, next));
 
 /**
  * @openapi
  * /api/clients:
  *   get:
- *     summary: Listar clientes
+ *     summary: Listar clientes del agente logueado
  *     tags:
  *       - Clients
  *     security:
@@ -89,8 +83,30 @@ router.post("/", requireAuth, validate({ body: createClientSchema }), (req, res,
  *       200:
  *         description: Lista de clientes
  */
-
 router.get("/", requireAuth, (req, res, next) => clientController.list(req, res, next));
+
+/**
+ * @openapi
+ * /api/clients/{id}:
+ *   get:
+ *     summary: Obtener cliente por ID
+ *     tags:
+ *       - Clients
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cliente encontrado
+ *       404:
+ *         description: Cliente no encontrado
+ */
+router.get("/:id", requireAuth, (req, res, next) => clientController.getById(req, res, next));
 
 /**
  * @openapi
@@ -114,39 +130,33 @@ router.get("/", requireAuth, (req, res, next) => clientController.list(req, res,
  *           schema:
  *             type: object
  *             properties:
- *               first_name:
+ *               nombres:
  *                 type: string
- *                 example: Juan
- *               last_name:
+ *               apellidos:
  *                 type: string
- *                 example: Perez
- *               age:
+ *               edad:
  *                 type: integer
- *                 example: 30
- *               email:
+ *               dni:
  *                 type: string
- *                 example: juan@gmail.com
- *               phone:
+ *               correo:
  *                 type: string
- *                 example: "+51987654321"
- *               marital_status:
+ *               telefono:
+ *                 type: string
+ *               estadoCivil:
  *                 type: string
  *                 enum: [soltero, casado, divorciado, viudo, conviviente]
- *               monthly_income:
+ *               ingresosMensuales:
  *                 type: number
- *                 example: 5000
- *               income_type:
+ *               tipoIngreso:
  *                 type: string
  *                 enum: [dependiente, independiente, mixto]
- *               dependents_count:
+ *               dependientes:
  *                 type: integer
- *                 example: 0
- *               employment_tenure_months:
+ *               antiguedadLaboral:
  *                 type: integer
- *                 example: 24
- *               employment_status:
+ *               situacionLaboral:
  *                 type: string
- *                 enum: [activo, desempleado, jubilado, independiente]
+ *                 enum: [estable, contrato, independiente, otro]
  *     responses:
  *       200:
  *         description: Cliente actualizado
@@ -177,5 +187,33 @@ router.put("/:id", requireAuth, validate({ body: updateClientSchema }), (req, re
  *         description: Cliente no encontrado
  */
 router.delete("/:id", requireAuth, (req, res, next) => clientController.remove(req, res, next));
+
+/**
+ * @openapi
+ * /api/clients/{id}/assign-housing/{housingId}:
+ *   post:
+ *     summary: Asignar vivienda a un cliente
+ *     tags:
+ *       - Clients
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: housingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vivienda asignada exitosamente
+ *       404:
+ *         description: Cliente o vivienda no encontrados
+ */
+router.post("/:id/assign-housing/:housingId", requireAuth, (req, res, next) => clientController.assignHousing(req, res, next));
 
 export default router;
